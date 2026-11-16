@@ -70,7 +70,7 @@ pub async fn get_knowledge_capabilities(
         )
     })
     .await
-    .map_err(|e| format!("知识能力查询失败: {e}"))
+    .map_err(|e| format!("知识能力查询失败: {e}"))?
 }
 
 pub(crate) fn build_knowledge_capabilities(
@@ -81,10 +81,10 @@ pub(crate) fn build_knowledge_capabilities(
     model_coverage: Vec<String>,
     effective_profile_id: Option<String>,
     profile: Option<modulink_core::knowledge::ModuleProfile>,
-) -> KnowledgeCapabilities {
+) -> Result<KnowledgeCapabilities, String> {
     // 判断手册级别：有索引 + 配了 manuals_dir = fulltext；有索引无 dir = preview；无索引 = none
     let index = manual_index(paths, manual_state);
-    let settings = load_settings(paths);
+    let settings = load_settings(&paths.settings_file())?;
     let manuals_dir = settings["kb"]["manuals_dir"]
         .as_str()
         .unwrap_or("")
@@ -165,7 +165,7 @@ pub(crate) fn build_knowledge_capabilities(
         profile.as_ref(),
     );
 
-    KnowledgeCapabilities {
+    Ok(KnowledgeCapabilities {
         core_available,
         manual_mode,
         effective_manual_mode,
@@ -176,5 +176,5 @@ pub(crate) fn build_knowledge_capabilities(
         fulltext_model_coverage,
         topic_count: index.len(),
         degradation_reason,
-    }
+    })
 }

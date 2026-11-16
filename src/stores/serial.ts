@@ -1,5 +1,5 @@
 import { isAtCommand } from "../utils/atCommand";
-import { probeProfile } from "../services/profileIdentification";
+import type { createSerialEvents, SerialError } from "../services/serialEvents";
 import type { DeviceSession, DeviceGroup } from "../types/device";
 import { defineStore } from "pinia";
 import { invoke } from "@tauri-apps/api/core";
@@ -18,10 +18,14 @@ import type {
   QuickCmdsFile,
 } from "../types";
 
-let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let serialInitPromise: Promise<void> | null = null;
 
-const MAX_FRAMES_PER_PORT = 20000;
+const eventRouters = new WeakMap<object, Promise<ReturnType<typeof createSerialEvents>>>();
+function eventsFor(store: Parameters<typeof createSerialEvents>[0]) {
+  let events = eventRouters.get(store);
+  if (!events) { events = import("../services/serialEvents").then(({ createSerialEvents }) => createSerialEvents(store)); eventRouters.set(store, events); }
+  return events;
+}
 
 export type SessionInfo = DeviceSession;
 // Requests belong to a session object. Reconnect/manual selection invalidates their result.
@@ -41,6 +45,8 @@ export const useSerialStore = defineStore("serial", {
     framesByPort: {} as Record<string, Frame[]>,
     listening: false,
     quickCmds: null as QuickCmdsFile | null,
+    quickLoaded: false, quickLoading: false, quickSaving: false, quickClosing: false, quickGuardReady: false,
+    quickRevision: 0, quickSavedRevision: 0, quickError: "",
     lastError: "" as string,
     txBytes: 0,
     rxBytes: 0,
@@ -51,6 +57,7 @@ export const useSerialStore = defineStore("serial", {
     deviceGroups: [] as DeviceGroup[],
   }),
   getters: {
+    quickDirty: (state) => state.quickRevision !== state.quickSavedRevision,
     activeSession(state): SessionInfo | undefined {
       return state.sessions.find((s) => s.port === state.activePort);
     },
@@ -86,28 +93,12 @@ export const useSerialStore = defineStore("serial", {
       if (!serialInitPromise) {
         serialInitPromise = (async () => {
           const unlisteners: UnlistenFn[] = [];
-          const appendFrame = (f: Frame) => {
-            const bucket = (this.framesByPort[f.port] ??= []);
-            bucket.push(f);
-            const size = f.hex ? f.hex.replace(/\s/g, "").length / 2 : f.text.length;
-            if (f.dir === "tx") this.txBytes += size;
-            else this.rxBytes += size;
-            if (bucket.length > MAX_FRAMES_PER_PORT) {
-              bucket.splice(0, bucket.length - MAX_FRAMES_PER_PORT);
-            }
-          };
+          const events = await eventsFor(this);
+          events.beginInit();
           try {
-            unlisteners.push(await listen<Frame[]>("serial://frames", (e) => {
-              for (const f of e.payload) appendFrame(f);
-            }));
-            unlisteners.push(await listen<Frame>("serial://frame", (e) => {
-              appendFrame(e.payload);
-            }));
-            unlisteners.push(await listen<{ port: string; error: string }>("serial://error", (e) => {
-              this.lastError = `${e.payload.port}: ${e.payload.error}`;
-              const s = this.sessions.find((x) => x.port === e.payload.port);
-              if (s) s.connected = false;
-            }));
+            unlisteners.push(await listen<Frame[]>("serial://frames", (e) => e.payload.forEach(events.receive)));
+            unlisteners.push(await listen<Frame>("serial://frame", (e) => events.receive(e.payload)));
+            unlisteners.push(await listen<SerialError>("serial://error", (e) => events.receive(e.payload)));
             await Promise.all([this.refreshPorts(), this.loadKnowledge()]);
             const open = await invoke<OpenPortInfo[]>("open_serial_ports");
             for (const p of open) {
@@ -126,12 +117,13 @@ export const useSerialStore = defineStore("serial", {
             if (!this.sessions.some((session) => session.port === this.activePort && session.connected)) {
               this.activePort = this.sessions.find((session) => session.connected)?.port ?? "";
             }
-            const saved = await invoke<QuickCmdsFile | null>("load_quickcmds");
-            if (saved) this.quickCmds = saved;
+            await this.loadQuickCmds();
             this.listening = true;
+            events.endInit();
           } catch (error) {
             for (const unlisten of unlisteners.reverse()) unlisten();
             this.listening = false;
+            events.endInit();
             throw error;
           }
         })();
@@ -172,21 +164,18 @@ export const useSerialStore = defineStore("serial", {
         this.activePort = port;
         return;
       }
-      if (existing) {
-        this.sessions = this.sessions.filter((session) => session.port !== port);
-      }
-      const opened = await invoke<OpenPortInfo>("open_serial", { port, baud: this.baud });
-      this.sessions.push({
-        port,
-        baud: opened.baud,
-        generation: opened.generation,
-        connected: true,
-        profileId: this.defaultProfileId,
-        firmware: "",
-      });
-      this.framesByPort[port] ??= [];
+      await this.openPort(port, this.baud, this.defaultProfileId);
       this.activePort = port;
-      // 型号探测由调用方（UI）触发，便于展示识别结果提示
+    },
+    async openPort(port: string, baud: number, profileId: string) {
+      const events = await eventsFor(this);
+      events.beginOpen(port);
+      try {
+        const opened = await invoke<OpenPortInfo>("open_serial", { port, baud });
+        this.sessions = this.sessions.filter(session => session.port !== port);
+        this.sessions.push({ port, baud: opened.baud, generation: opened.generation, connected: true, profileId, firmware: "" });
+        this.framesByPort[port] = [];
+      } finally { events.endOpen(port); }
     },
     /** 型号自动识别：按画像声明的探测指令尝试，结果归属当前会话。 */
     async detectProfile(port: string): Promise<string | null> {
@@ -203,6 +192,8 @@ export const useSerialStore = defineStore("serial", {
       // Defer execution until the request has been registered for synchronous failures too.
       const task: Promise<string | null> = Promise.resolve().then(async () => {
         try {
+          const { probeProfile } = await import("../services/profileIdentification");
+          if (!isCurrent()) return null;
           const profile = await probeProfile(this.knowledge!.profiles,
             (command) => this.executeAt(target, command, "profile_detection", 2500), isCurrent);
           if (!isCurrent()) return null;
@@ -233,28 +224,10 @@ export const useSerialStore = defineStore("serial", {
     },
     /** 创建设备组：打开 AT 口（必选）+ 日志口（可选），绑定为一个页签 */
     async createDeviceGroup(name: string, atPort: string, atBaud: number, logPort: string, logBaud: number) {
-      const openedAt = await invoke<OpenPortInfo>("open_serial", { port: atPort, baud: atBaud });
-      this.sessions.push({
-        port: atPort,
-        baud: openedAt.baud,
-        generation: openedAt.generation,
-        connected: true,
-        profileId: this.defaultProfileId,
-        firmware: "",
-      });
-      this.framesByPort[atPort] ??= [];
+      await this.openPort(atPort, atBaud, this.defaultProfileId);
       if (logPort) {
         try {
-          const openedLog = await invoke<OpenPortInfo>("open_serial", { port: logPort, baud: logBaud });
-          this.sessions.push({
-            port: logPort,
-            baud: openedLog.baud,
-            generation: openedLog.generation,
-            connected: true,
-            profileId: "",
-            firmware: "",
-          });
-          this.framesByPort[logPort] ??= [];
+          await this.openPort(logPort, logBaud, "");
         } catch (e) {
           // 日志口打开失败不影响 AT 口使用
           this.lastError = `日志口 ${logPort}: ${e}`;
@@ -354,19 +327,21 @@ export const useSerialStore = defineStore("serial", {
       if (this.activePort) this.framesByPort[this.activePort] = [];
     },
     async importLegacy(path: string) {
+      if (!this.quickLoaded) throw new Error("请先读取或恢复快捷指令，未覆盖原文件");
       this.quickCmds = await invoke<QuickCmdsFile>("import_legacy", { path });
       this.persistQuickCmds();
     },
-    /** 防抖持久化：任何编辑后 800ms 自动落盘 */
+    async loadQuickCmds(restore = false) {
+      const { persistenceFor } = await import("../services/quickCommandPersistence");
+      return persistenceFor(this).read(restore);
+    },
     persistQuickCmds() {
-      if (persistTimer) clearTimeout(persistTimer);
-      persistTimer = setTimeout(() => {
-        if (this.quickCmds) {
-          invoke("save_quickcmds", { data: this.quickCmds }).catch((error) => {
-            this.lastError = `快捷指令保存失败：${error}`;
-          });
-        }
-      }, 800);
+      this.quickRevision += 1;
+      void import("../services/quickCommandPersistence").then(({ persistenceFor }) => persistenceFor(this).schedule());
+    },
+    async flushQuickCmds() {
+      const { persistenceFor } = await import("../services/quickCommandPersistence");
+      return persistenceFor(this).flush();
     },
     async exportLegacy(path: string, data: QuickCmdsFile) {
       await invoke("export_legacy", { path, data });

@@ -1,14 +1,4 @@
-use std::fs::{self, OpenOptions};
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-
-struct StagedFile(PathBuf);
-impl Drop for StagedFile {
-    fn drop(&mut self) {
-        let _ = fs::remove_file(&self.0);
-    }
-}
+use std::path::Path;
 
 // Stage all fallible file writes before changing credentials. A failed rename
 // restores the previous key; a key-only update never rewrites the settings file.
@@ -19,29 +9,9 @@ pub fn commit_settings(
     read_key: impl Fn() -> Result<Option<String>, String>,
     write_key: impl Fn(Option<&str>) -> Result<(), String>,
 ) -> Result<(), String> {
-    static SEQUENCE: AtomicU64 = AtomicU64::new(0);
-    let staged = if let Some(json) = json {
-        let parent = path.parent().ok_or("设置目录无效")?;
-        fs::create_dir_all(parent).map_err(|e| format!("创建设置目录失败: {e}"))?;
-        let temporary = parent.join(format!(
-            ".settings-{}-{}.tmp",
-            std::process::id(),
-            SEQUENCE.fetch_add(1, Ordering::Relaxed)
-        ));
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary)
-            .map_err(|e| format!("创建临时设置失败: {e}"))?;
-        let guard = StagedFile(temporary);
-        let write_result = file.write_all(json).and_then(|_| file.sync_all());
-        // Windows cannot remove an open file: close it before the guard cleans up.
-        drop(file);
-        write_result.map_err(|e| format!("写入设置失败: {e}"))?;
-        Some(guard)
-    } else {
-        None
-    };
+    let staged = json
+        .map(|bytes| crate::atomic_file::stage(path, bytes))
+        .transpose()?;
     let previous_key = if key_change.is_some() {
         read_key()?
     } else {
@@ -51,7 +21,7 @@ pub fn commit_settings(
         write_key(key.as_deref())?;
     }
     if let Some(staged) = staged {
-        if let Err(error) = fs::rename(&staged.0, path) {
+        if let Err(error) = staged.commit(path) {
             if key_change.is_some() {
                 if let Err(rollback) = write_key(previous_key.as_deref()) {
                     return Err(format!(
@@ -69,6 +39,11 @@ pub fn commit_settings(
 mod tests {
     use super::*;
     use std::cell::{Cell, RefCell};
+    use std::{
+        fs,
+        path::PathBuf,
+        sync::atomic::{AtomicU64, Ordering},
+    };
     struct Temp(PathBuf);
     impl Drop for Temp {
         fn drop(&mut self) {

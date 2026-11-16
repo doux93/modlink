@@ -7,7 +7,7 @@ import type { Frame } from "../../src/types";
 import type { UiItem } from "../../src/types/ai";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, isTauri: () => false }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => vi.fn()) }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn() }));
@@ -64,7 +64,7 @@ describe("AI confirmation card", () => {
 });
 
 describe("terminal buffer rendering", () => {
-  const frame = (seq: number): Frame => ({ seq, ts: 1, port: "COM_A", dir: "rx", kind: "response", text: `line ${seq}` });
+  const frame = (seq: number): Frame => ({ generation: 1, seq, ts: 1, port: "COM_A", dir: "rx", kind: "response", text: `line ${seq}` });
   it("scrolls when a capped buffer replaces a row, and respects scroll pause", async () => {
     const wrapper = render(TerminalLog, { props: { frames: [frame(1), frame(2)], sourceKey: "COM_A:7", emptyMessage: "等待数据" } });
     const scroll = vi.spyOn(wrapper.element as HTMLElement, "scrollTo");

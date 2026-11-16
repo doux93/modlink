@@ -133,6 +133,7 @@ export interface KnowledgePackValidation {
 }
 
 export interface Frame {
+  generation: number;
   seq: number;
   ts: number;
   port: string;

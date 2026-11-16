@@ -36,7 +36,7 @@ async function screenshot(name) {
 }
 await page.addInitScript(()=>{
  localStorage.setItem('modulink-onboarding-completed','1');localStorage.setItem('ml.theme','light');
- const callbacks=new Map();const listeners=new Map();let next=1;let failSettings=true;let failLogClose=true;
+ const callbacks=new Map();const listeners=new Map();let next=1;let failSettings=true;let failLogClose=true;let failAi=true;
  window.__emitFixtureEvent=(name,payload)=>callbacks.get(listeners.get(name))?.({event:name,payload,id:0});
  const flow={id:'network_attach',name:'入网连通性检查',kind:'checkup',verified:true,category:'network',execution_mode:'readonly',applies_to:[],source:'内置基础检查',steps:[{id:'sim',title:'SIM 卡',command:'AT+CPIN?',timeout_ms:2000}]};
  const knowledge={profiles:[{id:'generic',schema:'',name:'通用蜂窝模组',support_level:'generic',at_commands:[],intents:[],capabilities:[],ports:[],urc_patterns:[],model_codes:[],diagnostics:[],error_code_tables:[],family:'',series:'',vendor:'',line_ending:'\r\n'}],flows:[flow],error_codes:{},profile_error_codes:{},at_docs:[],warnings:[]};
@@ -48,11 +48,13 @@ await page.addInitScript(()=>{
   if(command==='list_serial_ports')return [{name:'COM3',description:'USB Serial Device'},{name:'COM7',description:'Second AT Port'},{name:'COM8',description:'Diagnostic Log Port'}];
   if(command==='open_serial_ports'||command==='list_executions')return [];
   if(command==='load_quickcmds')return JSON.parse(localStorage.getItem('fixture.quickCommands') || 'null');
-  if(command==='save_quickcmds'){localStorage.setItem('fixture.quickCommands',JSON.stringify(args.data));return;}
+  if(command==='save_quickcmds'){if(window.__failNextQuickSave){window.__failNextQuickSave=false;throw new Error('Fixture: save denied');}localStorage.setItem('fixture.quickCommands',JSON.stringify(args.data));return;}
   if(command==='list_applicable_flows')return ['network_attach'];
   if(command==='get_knowledge_capabilities')return {coreAvailable:true,manualMode:'preview',effectiveManualMode:'preview',installedPacks:[],modelCoverage:[],fulltextModelCoverage:[],topicCount:0,degradationReason:'仅有摘要参考'};
   if(command==='get_settings')return {ai:{base_url:'',api_key_configured:false},kb:{manuals_dir:''}};
   if(command==='save_settings'){if(failSettings){failSettings=false;throw new Error('Fixture: configuration write denied');}return;}
+  if(command==='prepare_ai_request'||command==='cancel_ai_request')return true;
+  if(command==='ai_chat'){if(failAi){failAi=false;throw new Error('Fixture: service unavailable');}return {choices:[{message:{content:'OK'}}]};}
   if(command==='close_serial'){if(args.port==='COM8' && failLogClose){failLogClose=false;throw new Error('Fixture: log port close denied');}return;}
   if(command==='open_serial')return {port:args.port,baud:args.baud,generation:1};
   if(command==='run_diagnostic')return {flow_id:'network_attach',flow_name:flow.name,overall:'fail',steps:[{id:'sim',title:'SIM 卡检查',result:'fail',detail:'SIM 卡未就绪',reason:'设备返回 +CME ERROR: 10，未检测到 SIM 卡。',suggestion:'检查卡槽接触和卡片方向，重新上电后复测。',raw:['AT+CPIN?','+CME ERROR: 10'],collected:[],elapsed_ms:340}]};
@@ -97,25 +99,45 @@ try{
  await screenshot('light-ai.png');
  await page.locator('.ai-head').getByRole('button',{name:'配置',exact:true}).click();
  await page.getByPlaceholder('Base URL，如 https://onerouter.cmaiot.cn/v1',{exact:true}).fill('https://fixture.invalid/v1');
+ await page.getByPlaceholder('API Key',{exact:true}).fill('fixture-key');
  await page.locator('.cfg-modal').getByRole('button',{name:'保存',exact:true}).click();
  await page.locator('.cfg-error').waitFor();
  const settingsDialog = await page.locator('.cfg-modal').boundingBox();
  assert(settingsDialog.width <= 521 && settingsDialog.x >= 16, 'Settings dialog must remain compact and inside the viewport');
  assert((await page.getByPlaceholder('Base URL，如 https://onerouter.cmaiot.cn/v1',{exact:true}).inputValue())==='https://fixture.invalid/v1');
- assert((await page.locator('.ai-head').innerText()).includes('未配置 AI 服务'));
+ assert((await page.locator('.ai-head').innerText()).includes('AI 待配置'));
  await screenshot('light-ai-settings-retry.png');
  await page.locator('.cfg-modal').getByRole('button',{name:'保存',exact:true}).click();
  await page.locator('.cfg-modal').waitFor({state:'hidden'});
- assert(!(await page.locator('.ai-head').innerText()).includes('未配置 AI 服务'));
+ assert(!(await page.locator('.ai-head').innerText()).includes('AI 待配置'));
+ assert((await page.locator('.ai-head').innerText()).includes('AI 尚未验证'));
+ await page.locator('.ai-head').getByRole('button',{name:'测试连接',exact:true}).click();
+ await page.locator('.connection-error').waitFor();
+ assert((await page.locator('.ai-head').innerText()).includes('AI 连接失败'));
+ await screenshot('light-ai-connection-failed.png');
+ await page.locator('.ai-head').getByRole('button',{name:'测试连接',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('.ai-head').textContent.includes('AI 可用'));
+
  await page.locator('.sidebar-footer [role=switch]').click();
  await screenshot('dark-ai.png');
  await page.getByRole('link',{name:'串口控制台',exact:true}).click();await page.locator('.console').waitFor();
+ if(!await page.locator('.quick').isVisible())await page.getByRole('button',{name:'展开快捷指令',exact:true}).click();
+ await page.evaluate(()=>{window.__failNextQuickSave=true;});
+ await page.getByRole('button',{name:'编辑指令',exact:true}).first().click();
+ await page.getByPlaceholder('AT 指令或数据',{exact:true}).fill('AT+CGMI');
+ await page.locator('.n-modal').getByRole('button',{name:'保存',exact:true}).click();
+ await page.locator('.quick-save-alert').waitFor();
+ assert((await page.locator('.quick-text').first().innerText()).includes('AT+CGMI'));
+ await screenshot('dark-quick-save-failed.png');
+ await page.locator('.quick-save-alert').getByRole('button',{name:'重试保存',exact:true}).click();
+ await page.locator('.quick-save-alert').waitFor({state:'hidden'});
+
  await page.setViewportSize({width:1028,height:749});
  await page.evaluate(() => window.__emitFixtureEvent('serial://frames', [
-  {seq:1,ts:Date.now(),port:'COM3',dir:'tx',kind:'tx',text:'AT+CSQ'},
-  {seq:2,ts:Date.now(),port:'COM3',dir:'rx',kind:'response',text:'+CSQ: 23,99'},
-  {seq:3,ts:Date.now(),port:'COM3',dir:'rx',kind:'final',text:'OK'},
-  {seq:4,ts:Date.now(),port:'COM3',dir:'rx',kind:'final',text:'+CME ERROR: 10'},
+  {generation:1,seq:1,ts:Date.now(),port:'COM3',dir:'tx',kind:'tx',text:'AT+CSQ'},
+  {generation:1,seq:2,ts:Date.now(),port:'COM3',dir:'rx',kind:'response',text:'+CSQ: 23,99'},
+  {generation:1,seq:3,ts:Date.now(),port:'COM3',dir:'rx',kind:'final',text:'OK'},
+  {generation:1,seq:4,ts:Date.now(),port:'COM3',dir:'rx',kind:'final',text:'+CME ERROR: 10'},
  ]));
  await page.locator('.terminal .line').first().waitFor();
  await screenshot('dark-console-compact.png');
@@ -138,7 +160,7 @@ try{
  await page.locator('.connection-dialog').waitFor({state:'hidden'});
  await page.locator('.logpane').waitFor();
  await page.evaluate(() => {
-  window.__emitFixtureEvent('serial://frames', [{seq:1,ts:Date.now(),port:'COM7',dir:'rx',kind:'response',text:'+CREG: 0,1; '+ 'registration_details_'.repeat(12)}, {seq:1,ts:Date.now(),port:'COM8',dir:'rx',kind:'raw',text:'[NETWORK] Registration accepted; data connection ready.'}]);
+  window.__emitFixtureEvent('serial://frames', [{generation:1,seq:1,ts:Date.now(),port:'COM7',dir:'rx',kind:'response',text:'+CREG: 0,1; '+ 'registration_details_'.repeat(12)}, {generation:1,seq:1,ts:Date.now(),port:'COM8',dir:'rx',kind:'raw',text:'[NETWORK] Registration accepted; data connection ready.'}]);
  });
  await page.locator('.quick').waitFor({state:'hidden'});
  await screenshot('dark-console-dual-port.png');
@@ -195,7 +217,7 @@ try{
 
  assert.deepEqual(errors,[]);
  const screenshots=(await readdir(output)).filter(name=>name.endsWith('.png')).length;
- await writeFile(path.join(output,'result.json'), JSON.stringify({passed:true, fixture:true, commit:process.env.GITHUB_SHA, checks:['connection with custom settings', 'diagnostic result', 'AI draft handoff without sending', 'compact layout', 'compact heading and log height', 'single-device tab removal', 'empty panel stays closed', 'saved commands open automatically', 'dual-port automatic collapse', 'floating panel preserves terminal width', 'panel Escape returns focus', 'wide inline layout', 'explicit closed preference survives resize', 'device state and available actions', 'dark text contrast', 'settings failure preserves draft and saved state', 'settings retry applies saved state', 'partial group close retains state and retries'], screenshots, compact, dual, contrast},null,2));
+ await writeFile(path.join(output,'result.json'), JSON.stringify({passed:true, fixture:true, commit:process.env.GITHUB_SHA, checks:['connection with custom settings', 'diagnostic result', 'AI draft handoff without sending', 'compact layout', 'compact heading and log height', 'single-device tab removal', 'empty panel stays closed', 'saved commands open automatically', 'dual-port automatic collapse', 'floating panel preserves terminal width', 'panel Escape returns focus', 'wide inline layout', 'explicit closed preference survives resize', 'device state and available actions', 'dark text contrast', 'settings failure preserves draft and saved state', 'settings retry applies saved state', 'partial group close retains state and retries', 'quick save failure retains edits and retries', 'AI is unverified until a successful test', 'AI failed connection retries without sending device logs'], screenshots, compact, dual, contrast},null,2));
  console.log(`Visual preview flows passed: connected fixture, diagnosis, AI handoff, ${screenshots} screenshots; no hardware used.`);
 }catch(error){
  await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});

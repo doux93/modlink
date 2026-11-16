@@ -23,19 +23,24 @@ pub fn save_text_file(path: String, content: String) -> Result<(), String> {
     std::fs::write(path, content).map_err(|e| format!("写入失败: {e}"))
 }
 
+static QUICK_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[tauri::command]
 pub fn save_quickcmds(paths: State<'_, AppPaths>, data: QuickCmdsFile) -> Result<(), String> {
-    let path = paths.quickcmds_file();
-    let dir = path.parent().ok_or("快捷指令目录无效")?;
-    std::fs::create_dir_all(dir).map_err(|e| format!("创建目录失败: {e}"))?;
-    let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    std::fs::write(path, json).map_err(|e| format!("写入失败: {e}"))
+    let _guard = QUICK_LOCK.lock().map_err(|_| "快捷指令保存锁不可用")?;
+    crate::quickcmd_file::save(&paths.quickcmds_file(), &data)
 }
 
 #[tauri::command]
-pub fn load_quickcmds(paths: State<'_, AppPaths>) -> Option<QuickCmdsFile> {
-    let content = std::fs::read_to_string(paths.quickcmds_file()).ok()?;
-    serde_json::from_str(&content).ok()
+pub fn load_quickcmds(paths: State<'_, AppPaths>) -> Result<Option<QuickCmdsFile>, String> {
+    let _guard = QUICK_LOCK.lock().map_err(|_| "快捷指令保存锁不可用")?;
+    crate::quickcmd_file::load(&paths.quickcmds_file())
+}
+
+#[tauri::command]
+pub fn restore_quickcmds(paths: State<'_, AppPaths>) -> Result<QuickCmdsFile, String> {
+    let _guard = QUICK_LOCK.lock().map_err(|_| "快捷指令保存锁不可用")?;
+    crate::quickcmd_file::restore(&paths.quickcmds_file())
 }
 
 #[tauri::command]

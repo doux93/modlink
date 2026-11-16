@@ -1,5 +1,4 @@
 use crate::app_paths::AppPaths;
-use crate::config::load_settings;
 use crate::knowledge::manual::{
     is_manual_path_syntax_safe, manual_index, normalize_model_code, topic_matches_pack_scope,
     topic_pack_scope, CachedPackValidation, ManualIndex, PackTopicScope, PackValidationCache,
@@ -420,10 +419,10 @@ pub async fn validate_and_activate_knowledge_pack(
         if !result.valid {
             return Ok(result);
         }
-        let mut settings = load_settings(&paths);
-        settings["kb"]["manuals_dir"] = serde_json::Value::String(pack_dir.clone());
-        let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
-        std::fs::write(paths.settings_file(), json).map_err(|e| format!("写入失败: {e}"))?;
+        crate::ipc::settings::save_settings_value(
+            &paths,
+            serde_json::json!({"kb": {"manuals_dir": pack_dir.clone()}}),
+        )?;
         // 复用本次原子验证结果，避免激活后的能力刷新再次全量扫描。
         let dir = std::path::Path::new(&pack_dir);
         let manifest_stamp = file_stamp(&dir.join("manifest.json"));

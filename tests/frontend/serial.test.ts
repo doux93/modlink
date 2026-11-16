@@ -27,7 +27,7 @@ describe('serial store target isolation', () => {
     let finish!: (value: AtResult) => void;
     const execute = vi.spyOn(store, 'executeAt').mockReturnValue(new Promise((resolve) => { finish = resolve; }));
     const detecting = store.detectProfile('COM_A');
-    await Promise.resolve();
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledOnce());
     if (mode === 'replaced') store.sessions = [{ ...original, generation: 8 }];
     else store.sessions[0].generation = 8;
     finish({ request: 'AT+CGMM', final_code: 'OK', lines: ['ML307R'], elapsed_ms: 1 });
@@ -45,7 +45,7 @@ describe('serial store target isolation', () => {
       ? new Promise(resolve => { finish = resolve; }) : { request: command, final_code: 'OK', lines: ['V1.2'], elapsed_ms: 1 });
     const first = store.detectProfile('COM_A');
     const second = store.detectProfile('COM_A');
-    await Promise.resolve();
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledOnce());
     expect(store.sessions[0].identification).toBe('detecting');
     store.activePort = 'COM_B';
     expect(store.activeSession?.identification).toBeUndefined();
@@ -64,7 +64,7 @@ describe('serial store target isolation', () => {
     let finish!: (value: AtResult) => void;
     const execute = vi.spyOn(store, 'executeAt').mockReturnValue(new Promise(resolve => { finish = resolve; }));
     const detecting = store.detectProfile('COM_A');
-    await Promise.resolve();
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledOnce());
     store.setActiveProfile('manual-model');
     finish({ request: 'AT+CGMM', final_code: 'OK', lines: ['ML307R'], elapsed_ms: 1 });
     expect(await detecting).toBeNull();

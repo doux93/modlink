@@ -41,6 +41,7 @@ pub struct Frame {
     /// Unix 毫秒
     pub ts: i64,
     pub port: String,
+    pub generation: u64,
     /// "tx" | "rx"
     pub dir: String,
     /// echo | response | final | urc | raw | tx
@@ -63,11 +64,19 @@ fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
 
-fn make_frame(port: &str, dir: &str, kind: &str, text: String, hex: Option<String>) -> Frame {
+fn make_frame(
+    port: &str,
+    generation: u64,
+    dir: &str,
+    kind: &str,
+    text: String,
+    hex: Option<String>,
+) -> Frame {
     Frame {
         seq: FRAME_SEQ.fetch_add(1, Ordering::Relaxed),
         ts: now_ms(),
         port: port.to_string(),
+        generation,
         dir: dir.into(),
         kind: kind.into(),
         text,
@@ -216,7 +225,18 @@ impl SerialManager {
 
         // 读线程
         let pn = port_name.to_string();
-        std::thread::spawn(move || reader_loop(app, port, pn, pending, stop, history, urc_waiters));
+        std::thread::spawn(move || {
+            reader_loop(
+                app,
+                port,
+                pn,
+                generation,
+                pending,
+                stop,
+                history,
+                urc_waiters,
+            )
+        });
         Ok(OpenPortInfo {
             port: port_name.to_string(),
             baud,
@@ -321,12 +341,13 @@ impl Session {
             self.stop.store(true, Ordering::Relaxed);
             let _ = app.emit(
                 "serial://error",
-                serde_json::json!({ "port": self.port_name, "error": error }),
+                serde_json::json!({ "port": self.port_name, "generation": self.generation, "error": error }),
             );
             return Err(error);
         }
         let frame = make_frame(
             &self.port_name,
+            self.generation,
             "tx",
             "tx",
             if is_hex {
@@ -431,6 +452,7 @@ fn reader_loop(
     app: tauri::AppHandle,
     mut port: Box<dyn serialport::SerialPort>,
     port_name: String,
+    generation: u64,
     pending: Arc<Mutex<ResponseSlot<PendingCommand>>>,
     stop: Arc<AtomicBool>,
     history: Arc<Mutex<VecDeque<Frame>>>,
@@ -461,7 +483,7 @@ fn reader_loop(
                     if line.is_empty() {
                         continue;
                     }
-                    let frame = route_line(&port_name, line, &pending);
+                    let frame = route_line(&port_name, generation, line, &pending);
                     notify_urc_waiters(&urc_waiters, &frame);
                     record_frame(&history, frame.clone());
                     event_batch.push(frame);
@@ -474,7 +496,7 @@ fn reader_loop(
                     let line = String::from_utf8_lossy(&acc).to_string();
                     acc.clear();
                     if !line.trim().is_empty() {
-                        let frame = route_line(&port_name, line, &pending);
+                        let frame = route_line(&port_name, generation, line, &pending);
                         notify_urc_waiters(&urc_waiters, &frame);
                         record_frame(&history, frame.clone());
                         event_batch.push(frame);
@@ -495,7 +517,7 @@ fn reader_loop(
                 }
                 let _ = app.emit(
                     "serial://error",
-                    serde_json::json!({ "port": port_name, "error": "读串口失败，设备可能已断开" }),
+                    serde_json::json!({ "port": port_name, "generation": generation, "error": "读串口失败，设备可能已断开" }),
                 );
                 break;
             }
@@ -506,6 +528,7 @@ fn reader_loop(
 
 fn route_line(
     port_name: &str,
+    generation: u64,
     line: String,
     pending: &Arc<Mutex<ResponseSlot<PendingCommand>>>,
 ) -> Frame {
@@ -543,7 +566,7 @@ fn route_line(
         }
     }
 
-    make_frame(port_name, "rx", kind, line, None)
+    make_frame(port_name, generation, "rx", kind, line, None)
 }
 
 /// 命中的 waiter 收到该行并被移除（一次性消费）；命中但接收端已死
@@ -606,5 +629,18 @@ fn flush_event_batch(
         emit_frames(app, batch);
         batch.clear();
         *last_emit = Instant::now();
+    }
+}
+
+#[cfg(test)]
+mod event_contract_tests {
+    use super::*;
+    #[test]
+    fn transmitted_and_received_frames_keep_their_connection_generation() {
+        let tx = make_frame("COM3", 7, "tx", "tx", "AT".into(), None);
+        let pending = Arc::new(Mutex::new(ResponseSlot::default()));
+        let rx = route_line("COM3", 8, "+CREG: 1".into(), &pending);
+        assert_eq!(serde_json::to_value(tx).unwrap()["generation"], 7);
+        assert_eq!(serde_json::to_value(rx).unwrap()["generation"], 8);
     }
 }

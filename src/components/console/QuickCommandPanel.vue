@@ -26,6 +26,7 @@ defineProps<{ floating?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 const store = useSerialStore();
 const message = useMessage();
+const editBlocked = computed(() => !store.quickLoaded || !store.quickGuardReady || store.quickClosing);
 const connected = computed(() => store.activeSession?.connected ?? false);
 
 // ---------------- 快捷指令 ----------------
@@ -66,6 +67,7 @@ function ensureQuickCmds() {
 }
 
 function openEdit(idx: number) {
+  if (editBlocked.value) return;
   ensureQuickCmds();
   editIdx.value = idx;
   editDraft.value =
@@ -76,6 +78,7 @@ function openEdit(idx: number) {
 }
 
 function saveEdit() {
+  if (editBlocked.value) return;
   if (!editDraft.value.text.trim()) {
     message.warning("指令内容不能为空");
     return;
@@ -91,11 +94,13 @@ function saveEdit() {
 }
 
 function removeCmd(idx: number) {
+  if (editBlocked.value) return;
   store.quickCmds!.groups[activeGroup.value].items.splice(idx, 1);
   store.persistQuickCmds();
 }
 
 function moveCmd(idx: number, delta: number) {
+  if (editBlocked.value) return;
   const items = store.quickCmds!.groups[activeGroup.value].items;
   const to = idx + delta;
   if (to < 0 || to >= items.length) return;
@@ -108,6 +113,7 @@ const showGroupEdit = ref(false);
 const groupNameDraft = ref("");
 
 function addGroup() {
+  if (editBlocked.value) return;
   ensureQuickCmds();
   store.quickCmds!.groups.push({ name: `分组 ${store.quickCmds!.groups.length + 1}`, items: [] });
   activeGroup.value = store.quickCmds!.groups.length - 1;
@@ -115,11 +121,13 @@ function addGroup() {
 }
 
 function openGroupRename() {
+  if (editBlocked.value) return;
   groupNameDraft.value = store.quickCmds!.groups[activeGroup.value].name;
   showGroupEdit.value = true;
 }
 
 function saveGroupRename() {
+  if (editBlocked.value) return;
   if (groupNameDraft.value.trim()) {
     store.quickCmds!.groups[activeGroup.value].name = groupNameDraft.value.trim();
     store.persistQuickCmds();
@@ -128,6 +136,7 @@ function saveGroupRename() {
 }
 
 function removeGroup() {
+  if (editBlocked.value) return;
   store.quickCmds!.groups.splice(activeGroup.value, 1);
   if (!store.quickCmds!.groups.length) {
     store.quickCmds!.groups.push({ name: "默认分组", items: [] });
@@ -196,7 +205,7 @@ async function sendSelected(loop: boolean) {
     <div class="quick-head">
       <b>快捷指令</b>
       <div>
-        <n-button size="tiny" quaternary :disabled="transferring" @click="importIni">导入老 ini</n-button>
+        <n-button size="tiny" quaternary :disabled="transferring || editBlocked" @click="importIni">导入老 ini</n-button>
         <n-button size="tiny" quaternary :disabled="!store.quickCmds || transferring" @click="exportIni">
           导出
         </n-button>
@@ -205,6 +214,8 @@ async function sendSelected(loop: boolean) {
     </div>
     <p v-if="floating" class="floating-hint">临时展开，关闭后继续查看完整终端。</p>
     <p v-if="transferError" class="transfer-error" role="alert">{{ transferError }}；可重新操作。</p>
+    <p class="save-state" role="status">{{ store.quickLoading ? "正在读取快捷指令…" : store.quickSaving ? "正在保存…" : store.quickDirty ? "有未保存的修改" : store.quickLoaded ? "已保存到本机" : "快捷指令尚未读取" }}</p>
+    <fieldset :disabled="editBlocked" class="quick-editor">
     <template v-if="store.quickCmds">
       <div class="group-bar">
         <n-tabs v-model:value="activeGroup" type="line" size="small" class="tabs-flex">
@@ -212,7 +223,7 @@ async function sendSelected(loop: boolean) {
             {{ g.name }}
           </n-tab>
         </n-tabs>
-        <n-dropdown
+        <n-dropdown :disabled="editBlocked"
           trigger="click"
           :options="[
             { label: '新建分组', key: 'add' },
@@ -230,7 +241,7 @@ async function sendSelected(loop: boolean) {
           :key="i"
           class="quick-item"
         >
-          <n-checkbox v-model:checked="c.selected" size="small" @update:checked="store.persistQuickCmds()" />
+          <n-checkbox v-model:checked="c.selected" :disabled="editBlocked" size="small" @update:checked="store.persistQuickCmds()" />
           <span class="quick-text" :title="c.note ? `${c.note}\n${c.text}` : c.text" @dblclick="openEdit(i)">
             <n-tag v-if="c.format === 'hex'" size="tiny" type="warning" :bordered="false">
               HEX
@@ -262,7 +273,7 @@ async function sendSelected(loop: boolean) {
         <span class="loop-cfg">
           循环
           <n-input-number
-            v-model:value="store.quickCmds.loop.times"
+            v-model:value="store.quickCmds.loop.times" :disabled="editBlocked"
             size="tiny"
             :min="1"
             style="width: 80px"
@@ -270,7 +281,7 @@ async function sendSelected(loop: boolean) {
           />
           次 / 间隔
           <n-input-number
-            v-model:value="store.quickCmds.loop.interval_ms"
+            v-model:value="store.quickCmds.loop.interval_ms" :disabled="editBlocked"
             size="tiny"
             :min="0"
             :step="100"
@@ -287,7 +298,7 @@ async function sendSelected(loop: boolean) {
       </div>
     </template>
     <div v-else class="quick-empty">
-      <p>还没有快捷指令</p>
+      <p>{{ store.quickLoaded ? '还没有快捷指令' : '读取完成后可编辑快捷指令' }}</p>
       <n-button size="small" type="primary" ghost :loading="transferring" @click="importIni">
         导入 ini 配置
       </n-button>
@@ -296,6 +307,7 @@ async function sendSelected(loop: boolean) {
     </div>
 
 <!-- 指令编辑弹窗 -->
+</fieldset>
 <n-modal v-model:show="showEdit" preset="card" style="width: 520px"
   :title="editIdx >= 0 ? '编辑指令' : '新增指令'">
   <div class="edit-form">
@@ -342,6 +354,8 @@ async function sendSelected(loop: boolean) {
 </template>
 
 <style scoped>
+.quick-editor { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; margin: 0; padding: 0; border: 0; }
+.save-state { margin: 0; padding: 4px 12px; font-size: 11px; color: var(--text-tertiary); }
 .quick {
   min-width: 200px; flex-shrink: 0;
   display: flex; flex-direction: column; padding: 10px 10px 10px 4px;

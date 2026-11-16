@@ -1,4 +1,6 @@
 mod app_paths;
+mod atomic_file;
+mod quickcmd_file;
 mod capability_evidence;
 mod config;
 mod core;
@@ -70,6 +72,7 @@ pub fn run() {
             crate::ipc::knowledge_cmds::reload_knowledge,
             crate::ipc::legacy::save_quickcmds,
             crate::ipc::legacy::load_quickcmds,
+            crate::ipc::legacy::restore_quickcmds,
             crate::ipc::diagnostic::run_diagnostic,
             crate::ipc::diagnostic::cancel_diagnostic,
             crate::ipc::stress::run_stress_test,

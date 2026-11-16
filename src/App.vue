@@ -33,7 +33,7 @@ import { useWorkspace } from "./composables/useWorkspace";
 import { useOnboarding } from "./composables/useOnboarding";
 import { useUiPrefs, type ViewKey } from "./composables/useUiPrefs";
 import { lightThemeOverrides, darkThemeOverrides } from "./styles/theme-overrides";
-import WelcomeOverlay from "./components/onboarding/WelcomeOverlay.vue";
+const WelcomeOverlay = defineAsyncComponent(() => import("./components/onboarding/WelcomeOverlay.vue"));
 
 const executionStore = useExecutionStore();
 const serialStore = useSerialStore();
@@ -43,6 +43,7 @@ applyInitialTheme();
 void executionStore.init();
 void serialStore.init();
 
+const QuickSaveGuard = defineAsyncComponent(() => import("./components/QuickSaveGuard.vue"));
 const ExecutionDrawer = defineAsyncComponent(() => import("./components/ExecutionDrawer.vue"));
 const { historyOpen: showExecutionHistory, connectionOpen } = useWorkspace();
 const DeviceConnectionDialog = defineAsyncComponent(() => import("./components/DeviceConnectionDialog.vue"));
@@ -195,6 +196,7 @@ watch(
             </div>
           </aside>
           <main class="content">
+            <QuickSaveGuard />
             <DeviceContextBar />
             <div class="view-host">
               <KeepAlive>

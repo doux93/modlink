@@ -104,7 +104,25 @@ pub(crate) fn authorize_at_commands_blocking(
     commands: Vec<String>,
     port: Option<String>,
 ) -> Vec<AtCommandAuthorization> {
-    let settings = load_settings(paths);
+    let settings = match load_settings(&paths.settings_file()) {
+        Ok(settings) => settings,
+        Err(error) => {
+            return commands
+                .into_iter()
+                .map(|command| AtCommandAuthorization {
+                    command,
+                    authorized: false,
+                    applicability: None,
+                    manual: None,
+                    topic_id: None,
+                    pack_id: None,
+                    pack_version: None,
+                    reason_code: "settings_unavailable".into(),
+                    reason: format!("配置读取失败，已阻止执行：{error}"),
+                })
+                .collect()
+        }
+    };
     let root = settings["kb"]["manuals_dir"]
         .as_str()
         .unwrap_or("")

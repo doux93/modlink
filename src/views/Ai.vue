@@ -11,6 +11,7 @@ import { RefreshCw, Settings } from "@lucide/vue";
 import AppIcon from "../components/AppIcon.vue";
 import AiToolCard from "../components/ai/AiToolCard.vue";
 import AiSettingsDialog from "../components/ai/AiSettingsDialog.vue";
+import { useAiAvailability } from "../composables/useAiAvailability";
 import { useAiSettings } from "../composables/useAiSettings";
 import { useWorkspace } from "../composables/useWorkspace";
 import { useUiPrefs } from "../composables/useUiPrefs";
@@ -39,6 +40,8 @@ const { activeView } = useUiPrefs();
 // ---------------- 配置 ----------------
 const aiSettings = useAiSettings((text) => message.success(text));
 const { settings, load: loadSettings, open: openSettings } = aiSettings;
+const availability = useAiAvailability(aiSettings);
+const { configured: aiConfigured, label: aiLabel, checking: checkingAi, error: aiConnectionError } = availability;
 const capabilitiesLoading = ref(true);
 let capabilitiesRequestVersion = 0;
 const CAPABILITIES_TIMEOUT_MS = 5000;
@@ -80,7 +83,7 @@ const requestGate = useAiRequestGate(
 );
 const { requestStage, activeRequestId, requestInFlight, requestStageLabel, beginRequest,
   assertRequestCurrent, setRequestStage, waitForRequest, finishRequest } = requestGate;
-const busy = computed(() => requestInFlight.value || foregroundOperations.value > 0);
+const busy = computed(() => requestInFlight.value || foregroundOperations.value > 0 || checkingAi.value);
 function cancelActiveRequest(showNote = true) {
   const hadRequest = requestInFlight.value;
   requestGate.cancelActiveRequest();
@@ -89,7 +92,7 @@ function cancelActiveRequest(showNote = true) {
     void scrollBottom();
   }
 }
-onBeforeUnmount(() => cancelActiveRequest(false));
+onBeforeUnmount(() => { cancelActiveRequest(false); availability.cancel(); });
 
 const capabilities = ref<KnowledgeCapabilities | null>(null);
 const persistedCapabilityEvidence = ref("（当前没有持久化实测记录。）");
@@ -212,15 +215,20 @@ async function callLLM(
     temperature: 0.2,
   };
   setRequestStage(request, "waiting");
-  const resp = await waitForRequest(
-    requestAiChat<any>(
-      { base_url: settings.value.base_url, model: settings.value.model },
-      body,
-      { signal: request.abortController.signal, deadline: request.deadline },
-    ),
-    request
-  );
-  return resp.choices?.[0]?.message;
+  const revision = aiSettings.revision.value;
+  try {
+    const resp = await waitForRequest(
+      requestAiChat<any>(
+        { base_url: settings.value.base_url, model: settings.value.model }, body,
+        { signal: request.abortController.signal, deadline: request.deadline },
+      ), request,
+    );
+    availability.succeeded(revision);
+    return resp.choices?.[0]?.message;
+  } catch (error) {
+    if (!isRequestCancelled(error)) availability.failed(revision, error);
+    throw error;
+  }
 }
 
 async function authorizeCommands(commands: string[], profileId?: string): Promise<AtCommandAuthorization[]> {
@@ -660,10 +668,14 @@ async function send(preset?: string) {
     role: "user",
     content: `${q}\n\n[自动附带·最近串口日志]\n${recentLog(settings.value.recent_log_lines) || "(暂无)"}`,
   });
+  if (!aiConfigured.value && !ruleMode.value) {
+    ruleMode.value = true;
+    ui.value.push({ kind: "note", text: "AI 尚未配置，先使用离线规则；可在右上角完成配置并测试连接。" });
+  }
   if (ruleMode.value) {
     await scrollBottom();
     if (!ruleAnswer(q)) {
-      ui.value.push({ kind: "note", text: "规则模式下暂不支持此问题；恢复网络后点右上角「重连 AI」" });
+      ui.value.push({ kind: "note", text: "规则模式下暂不支持此问题；恢复网络后点右上角「测试连接」" });
     }
     return;
   }
@@ -682,9 +694,11 @@ async function send(preset?: string) {
   }
 }
 
-function retryOnline() {
-  ruleMode.value = false;
-  ui.value.push({ kind: "note", text: "已切回 AI 模式" });
+async function retryOnline() {
+  if (await availability.verify()) {
+    ruleMode.value = false;
+    ui.value.push({ kind: "note", text: "AI 连接测试通过，可以继续提问。" });
+  }
 }
 
 function clearChat() {
@@ -740,16 +754,16 @@ const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资�
         <h2>AI 调试助手</h2>
         <p class="sub">
           结合设备证据分析问题 ·
-          <b :class="ruleMode ? 'mode-rule' : settings.base_url ? 'mode-ai' : 'warn'">{{ ruleMode ? "规则引擎模式（离线）" : settings.base_url ? "AI 模式" : "未配置 AI 服务" }}</b>
+          <b :class="availability.result.value === 'available' ? 'mode-ai' : 'warn'">{{ aiLabel }}</b><span v-if="ruleMode"> · 离线规则</span>
           <template v-if="connected"> · {{ store.activePort }}</template>
           <template v-else> · <span class="warn">串口未连接，AI 无法替你执行指令</span></template>
         </p>
       </div>
       <div class="ops">
-        <n-button v-if="ruleMode" size="small" type="primary" @click="retryOnline">
+        <n-button v-if="aiConfigured" size="small" secondary :loading="checkingAi" :disabled="busy || aiSettings.busy.value" title="发送一条最小测试请求，不附带设备日志" @click="retryOnline">
           <span class="btn-label-row">
             <AppIcon :icon="RefreshCw" :size="13" />
-            <span class="gap-4">重连 AI</span>
+            <span class="gap-4">测试连接</span>
           </span>
         </n-button>
         <n-button size="small" quaternary :disabled="foregroundOperations > 0" @click="clearChat">清空对话</n-button>
@@ -762,11 +776,12 @@ const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资�
       </div>
     </header>
 
+    <p v-if="aiConnectionError" class="connection-error" role="alert">{{ aiConnectionError }}</p>
     <div class="ai-context" aria-label="本轮分析上下文">
       <span>目标设备 <b>{{ connected ? store.activePort : '未连接，可咨询或分析已有材料' }}</b></span>
       <span>自动附带日志 <b>{{ attachedLogCount }} 条</b></span><span>资料 <b>{{ manualLabel }}</b></span>
       <n-button v-if="!connected" size="small" secondary @click="connectDevice">连接设备</n-button>
-      <n-button v-if="!settings.base_url" size="small" secondary @click="openSettings">配置 AI 服务</n-button>
+      <n-button v-if="!aiConfigured" size="small" secondary @click="openSettings">配置 AI 服务</n-button>
       <n-button v-if="connected" size="small" text @click="activeView = 'diag'">返回诊断与复测</n-button>
     </div>
     <details v-if="attachedLogCount" class="context-preview"><summary>查看随问题发送的最近串口日志</summary><pre>{{ recentLog(settings.recent_log_lines) }}</pre></details>
@@ -825,6 +840,7 @@ const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资�
 </template>
 
 <style scoped>
+.connection-error { color: var(--status-danger); font-size: 12px; overflow-wrap: anywhere; }
 .ai { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 18px 24px; }
 .ai-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px 16px; margin-bottom: 12px; }
 h2 { font-size: 18px; color: var(--text-primary); }

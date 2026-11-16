@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -58,6 +58,7 @@ try {
   assert(knowledge.profiles.length > 0, "Packaged module profiles must load through real IPC");
   checks.push("packaged knowledge loaded through IPC");
   const closeWelcome = page.getByRole("button", { name: "关闭引导", exact: true });
+  if (await page.evaluate(() => localStorage.getItem("modulink-onboarding-completed") !== "1")) await closeWelcome.waitFor();
   if (await closeWelcome.isVisible()) await closeWelcome.click();
   const pages = [["串口控制台", ".console"], ["设备诊断", ".diag"], ["AI 助手", ".ai"], ["知识中心", ".kb-page"], ["稳定性验证", ".stress"], ["日志分析", ".log-analysis"]];
   for (const theme of ["dark", "light"]) {
@@ -125,6 +126,31 @@ try {
   await page.getByRole("button", { name: "展开快捷指令", exact: true }).click();
   await page.locator(".quick-text").filter({ hasText: "AT+CSQ" }).waitFor();
   checks.push("quick panel collapse preference survives reload", "quick commands preserved when panel is hidden");
+  const userDataDirectory = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("plugin:path|resolve_directory", { directory: 14 }));
+  const quickFile = path.join(userDataDirectory, "quickcmds/current.json");
+  const originalQuick = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("load_quickcmds"));
+  await page.evaluate(data => window.__TAURI_INTERNALS__.invoke("save_quickcmds", { data: { ...data, name: "backup smoke" } }), originalQuick);
+  await writeFile(quickFile, "{broken");
+  await page.reload();
+  await page.locator(".quick-save-alert").waitFor();
+  await page.screenshot({ path: path.join(output, "quick-file-recovery.png"), animations: "disabled" });
+  await page.getByRole("button", { name: "恢复上次备份", exact: true }).click();
+  await page.locator(".quick-save-alert").waitFor({ state: "hidden" });
+  assert.deepEqual(JSON.parse(await readFile(quickFile, "utf8")), originalQuick);
+  checks.push("corrupt quick commands remain visible as a recoverable error", "explicit backup recovery restores previous commands");
+  const configDirectory = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("plugin:path|resolve_directory", { directory: 13 }));
+  const settingsFile = path.join(configDirectory, "settings.json");
+  const previousSettings = await readFile(settingsFile).catch(error => { if (error.code === "ENOENT") return null; throw error; });
+  try {
+    await writeFile(settingsFile, "{broken");
+    const outcomes = await page.evaluate(async () => {
+      const failed = async (command, args) => { try { await window.__TAURI_INTERNALS__.invoke(command, args); return false; } catch { return true; } };
+      return [await failed("get_settings"), await failed("save_settings", { settings: { ai: { model: "replacement" } } })];
+    });
+    assert.deepEqual(outcomes, [true, true]);
+    assert.equal(await readFile(settingsFile, "utf8"), "{broken");
+  } finally { if (previousSettings) await writeFile(settingsFile, previousSettings); else await rm(settingsFile, { force: true }); }
+  checks.push("corrupt settings reject reads and writes without overwriting the original");
   await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("close_serial", { port: "MODULINK_SMOKE_ABSENT", sessionGeneration: 1 }));
   checks.push("generation-bound close is idempotent for an absent port");
   await page.getByRole("link", { name: "AI 助手", exact: true }).click();
@@ -142,7 +168,26 @@ try {
   assert.equal(await page.locator("#global-error-overlay").count(), 0);
   assert.deepEqual(errors, []);
   checks.push("history drawer", "quick-command disk persistence", "disconnected send disabled", "WebView reload");
-  await writeFile(path.join(output, "result.json"), JSON.stringify({ commit: process.env.GITHUB_SHA, passed: true, checks, url: page.url() }, null, 2));
+  const desktopUrl = page.url();
+  await page.getByRole("link", { name: "串口控制台", exact: true }).click();
+  if (!await page.locator(".quick").isVisible()) await page.getByRole("button", { name: "展开快捷指令", exact: true }).click();
+  await page.getByRole("button", { name: "＋ 新增指令", exact: true }).click();
+  await page.getByPlaceholder("AT 指令或数据", { exact: true }).fill("AT+CGMI");
+  // Extend only the autosave debounce in this disposable test so closing must flush it.
+  await page.evaluate(() => {
+    const schedule = window.setTimeout.bind(window);
+    window.setTimeout = (callback, milliseconds, ...args) => schedule(callback, milliseconds === 800 ? 10000 : milliseconds, ...args);
+    const save = [...document.querySelectorAll(".n-modal button")].find(button => button.textContent.trim() === "保存");
+    save.click();
+  });
+  const closed = page.waitForEvent("close");
+  const closeRequest = page.evaluate(() => window.__TAURI_INTERNALS__.invoke("plugin:window|close", { label: "main" }));
+  const closeResults = await Promise.allSettled([closed, closeRequest]);
+  assert.equal(closeResults[0].status, "fulfilled", "The window must close after flushing commands");
+  const afterClose = JSON.parse(await readFile(quickFile, "utf8"));
+  assert(afterClose.groups.some(group => group.items.some(item => item.text === "AT+CGMI")));
+  checks.push("native window close flushes pending quick commands before destruction");
+  await writeFile(path.join(output, "result.json"), JSON.stringify({ commit: process.env.GITHUB_SHA, passed: true, checks, url: desktopUrl }, null, 2));
   console.log(`Desktop smoke passed: ${checks.length} checks`);
 } catch (error) {
   if (page) await page.screenshot({ path: path.join(output, "failure.png") }).catch(() => {});

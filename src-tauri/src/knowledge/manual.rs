@@ -596,7 +596,10 @@ pub fn search_manuals(
     if query.trim().is_empty() {
         return vec![serde_json::json!({"error": "检索关键词不能为空"})];
     }
-    let settings = load_settings(&paths);
+    let settings = match load_settings(&paths.settings_file()) {
+        Ok(settings) => settings,
+        Err(error) => return vec![serde_json::json!({"error": error})],
+    };
     let root = settings["kb"]["manuals_dir"]
         .as_str()
         .unwrap_or("")

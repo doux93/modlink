@@ -24,7 +24,7 @@ const flow = (): DiagFlow => ({ id: "network_attach", name: "入网连通性检�
 const report = (): DiagReport => ({ flow_id: "network_attach", flow_name: "入网连通性检查", overall: "fail", steps: [{ id: "sim", title: "SIM 卡", result: "fail", detail: "SIM 未就绪", reason: "未检测到 SIM", suggestion: "检查卡槽后复测", raw: ["+CME ERROR: 10"], collected: [], elapsed_ms: 20 }] } as DiagReport);
 function setup(component: any, connected = false) {
   const pinia = createPinia(); setActivePinia(pinia);
-  const serial = useSerialStore(); serial.listening = true;
+  const serial = useSerialStore(); serial.listening = true; serial.quickLoaded = true; serial.quickGuardReady = true;
   serial.knowledge = { profiles: [], flows: [flow()], error_codes: {}, profile_error_codes: {}, at_docs: [], warnings: [] } as unknown as KnowledgeStore;
   serial.defaultProfileId = "generic";
   if (connected) {
@@ -71,7 +71,7 @@ describe("shared connection flow", () => {
     const original = mocks.invoke.getMockImplementation()!;
     mocks.invoke.mockImplementation(async (command, args) => { if (command === "open_serial") throw new Error("access denied"); return original(command, args); });
     (await button("连接并识别")).click(); await flushPromises();
-    expect(document.querySelector('[role="alert"]')?.textContent).toContain("端口占用");
+    await vi.waitFor(() => expect(document.querySelector('[role="alert"]')?.textContent).toContain("端口占用"));
     expect(useWorkspace().connectionOpen.value).toBe(true);
     mocks.invoke.mockImplementation(original);
     (await button("连接并识别")).click(); await flushPromises();
@@ -220,7 +220,7 @@ it("exports the originally selected session even if the current device changes w
 
 it("retains logs after a failed export, shows a local error, and permits retry or cancellation", async () => {
   const serial = setup(Console, true);
-  serial.framesByPort.COM_A = [{ seq: 1, ts: 1, port: 'COM_A', dir: 'rx', kind: 'response', text: 'retained' }];
+  serial.framesByPort.COM_A = [{ generation: 7, seq: 1, ts: 1, port: 'COM_A', dir: 'rx', kind: 'response', text: 'retained' }];
   mocks.save.mockResolvedValue("capture.log");
   mocks.invoke.mockRejectedValueOnce(new Error("disk full"));
   (await button("保存日志")).click(); await flushPromises();
