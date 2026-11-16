@@ -16,24 +16,35 @@ pub fn save_settings(
     paths: State<'_, AppPaths>,
     mut settings: serde_json::Value,
 ) -> Result<(), String> {
+    static SAVE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = SAVE_LOCK.lock().map_err(|_| "设置保存锁不可用")?;
+    let mut key_change = None;
     if let Some(ai) = settings.get_mut("ai").and_then(|v| v.as_object_mut()) {
         if let Some(key) = ai.remove("api_key") {
-            match key {
-                serde_json::Value::String(value) if !value.is_empty() => {
-                    credentials::set_api_key(&value)?;
-                }
-                serde_json::Value::Null => credentials::clear_api_key()?,
-                _ => {}
-            }
+            key_change = match key {
+                serde_json::Value::String(value) if !value.is_empty() => Some(Some(value)),
+                serde_json::Value::Null => Some(None),
+                _ => None,
+            };
         }
         ai.remove("api_key_configured");
     }
-    let mut merged = load_settings(&paths);
+    let current = load_settings(&paths);
+    let mut merged = current.clone();
     merge_json(&mut merged, settings);
-    let json = serde_json::to_string_pretty(&merged).map_err(|e| e.to_string())?;
-    let path = paths.settings_file();
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("创建设置目录失败: {e}"))?;
-    }
-    std::fs::write(path, json).map_err(|e| format!("写入失败: {e}"))
+    let json = if merged != current {
+        Some(serde_json::to_vec_pretty(&merged).map_err(|e| e.to_string())?)
+    } else {
+        None
+    };
+    crate::settings_commit::commit_settings(
+        &paths.settings_file(),
+        json.as_deref(),
+        key_change,
+        credentials::get_api_key,
+        |key| match key {
+            Some(value) => credentials::set_api_key(value),
+            None => credentials::clear_api_key(),
+        },
+    )
 }

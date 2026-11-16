@@ -10,6 +10,7 @@ mod knowledge;
 mod knowledge_caps_tests;
 #[cfg(test)]
 mod regression;
+mod settings_commit;
 mod storage;
 mod types;
 

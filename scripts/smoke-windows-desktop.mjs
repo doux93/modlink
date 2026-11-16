@@ -129,10 +129,15 @@ try {
   checks.push("generation-bound close is idempotent for an absent port");
   await page.getByRole("link", { name: "AI 助手", exact: true }).click();
   await page.locator(".ai-head").getByRole("button", { name: "配置", exact: true }).click();
+  await page.waitForFunction(() => {
+    const input = document.querySelector(".cfg-modal input");
+    return input && !input.disabled;
+  });
+  const savedAiHeader = await page.locator(".ai-head .sub").innerText();
   await page.getByPlaceholder("Base URL，如 https://onerouter.cmaiot.cn/v1", { exact: true }).fill("https://unsaved.invalid/v1");
   await page.locator(".cfg-modal").getByRole("button", { name: "取消", exact: true }).click();
   await page.locator(".cfg-modal").waitFor({ state: "hidden" });
-  assert((await page.locator(".ai-head").innerText()).includes("未配置 AI 服务"));
+  assert.equal(await page.locator(".ai-head .sub").innerText(), savedAiHeader);
   checks.push("cancelled AI settings do not alter the active configuration");
   assert.equal(await page.locator("#global-error-overlay").count(), 0);
   assert.deepEqual(errors, []);
