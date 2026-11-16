@@ -115,6 +115,13 @@ try {
   assert(persisted, "Quick command must be saved to disk before reloading");
   await page.reload();
   await page.locator(".quick-text").filter({ hasText: "AT+CSQ" }).waitFor();
+  await page.getByRole("button", { name: "收起快捷指令", exact: true }).click();
+  await page.locator(".quick").waitFor({ state: "hidden" });
+  await page.reload();
+  await page.getByRole("button", { name: "展开快捷指令", exact: true }).waitFor();
+  await page.getByRole("button", { name: "展开快捷指令", exact: true }).click();
+  await page.locator(".quick-text").filter({ hasText: "AT+CSQ" }).waitFor();
+  checks.push("quick panel collapse preference survives reload", "quick commands preserved when panel is hidden");
   assert.equal(await page.locator("#global-error-overlay").count(), 0);
   assert.deepEqual(errors, []);
   checks.push("history drawer", "quick-command disk persistence", "disconnected send disabled", "WebView reload");

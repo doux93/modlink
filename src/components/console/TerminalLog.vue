@@ -121,8 +121,9 @@ onActivated(scrollToLatest);
   background: var(--surface-terminal); color: var(--term-rx);
   font-family: Consolas, "Cascadia Mono", monospace; line-height: 1.55;
 }
-.log-output { background: var(--surface-terminal-alt); color: var(--term-muted); line-height: 1.5; }
-.line { display: flex; gap: 8px; white-space: pre-wrap; word-break: break-all; align-items: baseline; }
+.log-output { background: var(--surface-terminal-alt); color: var(--term-rx); line-height: 1.5; }
+.line { display: flex; flex-wrap: wrap; gap: 0 8px; white-space: pre-wrap; word-break: break-all; align-items: baseline; }
+.txt { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .ts { color: var(--term-muted); flex-shrink: 0; }
 .dir { flex-shrink: 0; opacity: 0.7; }
 .ln-tx .txt { color: var(--term-tx); }
@@ -135,7 +136,7 @@ onActivated(scrollToLatest);
 .sev-info { background: rgba(45, 189, 120, 0.18); color: var(--term-ok); }
 .sev-warning { background: rgba(224, 167, 59, 0.18); color: var(--term-urc); }
 .sev-error { background: rgba(217, 83, 79, 0.18); color: var(--term-error); }
-.anno { color: var(--term-anno); font-size: 12px; cursor: help; flex-shrink: 0; }
+.anno { color: var(--term-anno); font-size: 12px; cursor: help; flex-shrink: 1; max-width: 100%; }
 .anno:hover { color: var(--term-echo); }
 .cap-hint { color: var(--status-warning); font-size: 12px; padding-bottom: 6px; }
 </style>

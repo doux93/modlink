@@ -46,6 +46,8 @@ function readFontSize(): number {
   return Number.isFinite(n) && n >= 10 && n <= 24 ? n : 13;
 }
 const fontSize = ref<number>(readFontSize());
+const showQuickCommands = ref(safeGet("ml.showQuickCommands") !== "0");
+watch(showQuickCommands, (value) => safeSet("ml.showQuickCommands", value ? "1" : "0"));
 const sidebarCollapsed = ref(safeGet("ml.sidebarCollapsed") === "1");
 watch(sidebarCollapsed, (value) => safeSet("ml.sidebarCollapsed", value ? "1" : "0"));
 
@@ -75,6 +77,7 @@ export function useUiPrefs() {
     activeView,
     fontSize,
     sidebarCollapsed,
+    showQuickCommands,
     applyInitialTheme,
   };
 }

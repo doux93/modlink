@@ -5,6 +5,7 @@ import { mount, flushPromises, type VueWrapper } from "@vue/test-utils";
 import { defineComponent } from "vue";
 import { NConfigProvider, NMessageProvider, NDialogProvider, NSelect } from "naive-ui";
 import Connection from "../../src/components/DeviceConnectionDialog.vue";
+import Console from "../../src/views/Console.vue";
 import Diagnosis from "../../src/views/Diagnosis.vue";
 import Welcome from "../../src/components/onboarding/WelcomeOverlay.vue";
 import { useSerialStore } from "../../src/stores/serial";
@@ -148,4 +149,21 @@ describe("device-bound diagnosis and review", () => {
     expect(mocks.invoke.mock.calls.some(([command]) => command === "run_diagnostic")).toBe(false);
     expect(document.body.textContent).toContain("当前设备已变化");
   });
+});
+
+
+it("does not send serial data when Enter confirms an IME candidate", async () => {
+  const serial = setup(Console, true);
+  const write = vi.spyOn(serial, "write").mockResolvedValue();
+  await flushPromises();
+  const input = wrapper!.find(".input-bar textarea");
+  await input.setValue("AT");
+  await input.trigger("keydown", { key: "Enter", isComposing: true });
+  await input.trigger("keydown", { key: "Enter", keyCode: 229 });
+  await flushPromises();
+  expect(write).not.toHaveBeenCalled();
+  expect((input.element as HTMLTextAreaElement).value).toBe("AT");
+  await input.trigger("keydown", { key: "Enter" });
+  await flushPromises();
+  expect(write).toHaveBeenCalledOnce();
 });

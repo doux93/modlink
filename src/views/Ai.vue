@@ -1177,6 +1177,13 @@ const QUICK_ASKS = [
   "帮我测试信号质量和网络注册状态",
 ];
 
+function onInputKey(event: KeyboardEvent) {
+  if (event.isComposing || event.keyCode === 229) return;
+  if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    event.preventDefault();
+    void send();
+  }
+}
 const connected = computed(() => store.activeSession?.connected ?? false);
 const attachedLogCount = computed(() => Math.min(store.activeFrames.length, settings.value.recent_log_lines));
 const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资料" : activeManualMode() === "fulltext" ? "可检索全文手册" : activeManualMode() === "preview" ? "仅有摘要参考" : "暂无可用手册");
@@ -1263,7 +1270,7 @@ const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资�
         :rows="2"
         placeholder="描述你的问题，如：为什么 MQTT 连不上 OneNET？（Enter 发送）"
         :disabled="busy || awaitingConfirmation"
-        @keydown.enter.exact.prevent="send()"
+        @keydown="onInputKey"
       />
       <n-button v-if="requestInFlight" type="warning" secondary @click="cancelActiveRequest()">取消请求</n-button>
       <n-button v-else type="primary" :loading="busy" :disabled="busy || awaitingConfirmation" @click="send()">发送</n-button>

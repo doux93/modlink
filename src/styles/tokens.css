@@ -50,8 +50,8 @@
   --term-error: #ff7b72;
   --term-urc: #e0b355;
   --term-echo: #d6dae2;
-  --term-muted: #6a7280;
-  --term-anno: #8a93a3;
+  --term-muted: #9aa7bb;
+  --term-anno: #b1bfd2;
 
   /* --- Radius --- */
   --radius-sm: 4px;
@@ -83,27 +83,51 @@
 }
 
 :root[data-theme="dark"] {
-  --surface-base: #101014;
-  --surface-raised: #18181d;
-  --surface-overlay: #1f1f25;
-  --surface-hover: rgba(255, 255, 255, 0.04);
-  --surface-pressed: rgba(255, 255, 255, 0.08);
+  /* Slate surfaces preserve depth without a near-black canvas. */
+  --surface-base: #252c36;
+  --surface-raised: #2d3642;
+  --surface-overlay: #354151;
+  --surface-hover: rgba(190, 210, 235, 0.08);
+  --surface-pressed: rgba(190, 210, 235, 0.14);
+  --surface-terminal: #202934;
+  --surface-terminal-alt: #25313e;
 
-  --text-primary: #e8e8ea;
-  --text-secondary: #b8bcc4;
-  --text-tertiary: #a0a0a8;
-  --text-disabled: #5a5a62;
+  --border-subtle: rgba(180, 199, 224, 0.16);
+  --border-default: rgba(180, 199, 224, 0.26);
+  --border-strong: rgba(180, 199, 224, 0.42);
 
-  --brand-primary-soft: rgba(47, 111, 237, 0.20);
+  --text-primary: #e7edf6;
+  --text-secondary: #c2cddb;
+  --text-tertiary: #a2b0c3;
+  --text-disabled: #7d899a;
+  --text-inverted: #18283f;
 
-  --status-success-soft: rgba(45, 189, 120, 0.22);
-  --status-warning-soft: rgba(224, 167, 59, 0.22);
-  --status-danger-soft: rgba(217, 83, 79, 0.22);
-  --status-info-soft: rgba(76, 141, 255, 0.25);
+  --brand-primary: #8bb8ff;
+  --brand-primary-hover: #a7c9ff;
+  --brand-primary-pressed: #73a4ef;
+  --brand-primary-soft: rgba(139, 184, 255, 0.15);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --status-success: #75d2ad;
+  --status-warning: #f0c879;
+  --status-danger: #f29aa0;
+  --status-info: #93beff;
+  --status-success-soft: rgba(117, 210, 173, 0.14);
+  --status-warning-soft: rgba(240, 200, 121, 0.14);
+  --status-danger-soft: rgba(242, 154, 160, 0.14);
+  --status-info-soft: rgba(147, 190, 255, 0.15);
+
+  --term-tx: #95c8ff;
+  --term-rx: #dce5f1;
+  --term-ok: #8bd6a0;
+  --term-error: #ffa29a;
+  --term-urc: #edca83;
+  --term-echo: #dce5f1;
+  --term-muted: #9fafc5;
+  --term-anno: #bbc9db;
+
+  --shadow-sm: 0 1px 2px rgba(12, 20, 30, 0.18);
+  --shadow-md: 0 4px 12px rgba(12, 20, 30, 0.26);
+  --shadow-lg: 0 12px 32px rgba(12, 20, 30, 0.35);
 
   color-scheme: dark;
 }

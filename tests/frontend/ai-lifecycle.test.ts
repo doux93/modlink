@@ -36,6 +36,9 @@ describe("AI page request lifecycle", () => {
     wrapper = mount(host, { global: { plugins: [pinia] } });
     await flushPromises();
     await wrapper.find("textarea").setValue("分析日志");
+    await wrapper.find("textarea").trigger("keydown", { key: "Enter", isComposing: true });
+    await flushPromises();
+    expect(mocks.invoke.mock.calls.some(([command]) => command === "ai_chat")).toBe(false);
     await wrapper.find("textarea").trigger("keydown", { key: "Enter" });
     await vi.waitFor(async () => { await flushPromises(); expect(finish).toBeTypeOf("function"); });
     const requestId = mocks.invoke.mock.calls.find(([command]) => command === "ai_chat")![1].requestId;

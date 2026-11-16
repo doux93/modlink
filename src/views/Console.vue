@@ -7,7 +7,7 @@ import {
   NTooltip,
   useMessage,
 } from "naive-ui";
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onActivated, onDeactivated, onBeforeUnmount } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { X, Cable, FileText, AlertTriangle } from "@lucide/vue";
@@ -23,7 +23,8 @@ import { useUiPrefs } from "../composables/useUiPrefs";
 const store = useSerialStore();
 const message = useMessage();
 const { connectDevice } = useWorkspace();
-const { activeView } = useUiPrefs();
+const { activeView, showQuickCommands } = useUiPrefs();
+const visibleSessionCount = computed(() => store.deviceGroups.length + store.standaloneSessions.length);
 
 onMounted(() => store.init());
 
@@ -65,24 +66,56 @@ async function saveLogPane() {
 }
 
 // ---------------- 布局：可拖动分栏（宽度持久化） ----------------
-const quickW = ref(Number(localStorage.getItem("ml.quickW")) || 320);
-const logW = ref(Number(localStorage.getItem("ml.logW")) || 380);
+function readPanelWidth(key: string, fallback: number) {
+  try {
+    const value = Number(localStorage.getItem(key));
+    return Number.isFinite(value) && value >= 200 && value <= 720 ? value : fallback;
+  } catch { return fallback; }
+}
+const quickW = ref(readPanelWidth("ml.quickW", 280));
+const logW = ref(readPanelWidth("ml.logW", 340));
+const bodyEl = ref<HTMLElement>();
+const bodyWidth = ref(960);
+const availableWidth = computed(() => Math.max(0, bodyWidth.value - 16));
+const quickWidth = computed(() => Math.min(quickW.value, Math.max(200,
+  availableWidth.value - 320 - (store.activeDeviceGroup?.logPort ? 210 : 5))));
+const logWidth = computed(() => Math.min(logW.value, Math.max(200,
+  availableWidth.value - 320 - (showQuickCommands.value ? quickWidth.value + 10 : 5))));
+let observer: ResizeObserver | undefined;
+let finishDrag: (() => void) | undefined;
+function measureBody() {
+  const width = bodyEl.value?.getBoundingClientRect().width;
+  if (width) bodyWidth.value = width;
+}
+onMounted(() => {
+  measureBody();
+  observer = new ResizeObserver(measureBody);
+  if (bodyEl.value) observer.observe(bodyEl.value);
+});
+onActivated(measureBody);
+onDeactivated(() => finishDrag?.());
+onBeforeUnmount(() => { observer?.disconnect(); finishDrag?.(); });
 
 function startDrag(which: "quick" | "log", e: MouseEvent) {
   e.preventDefault();
+  finishDrag?.();
   const startX = e.clientX;
-  const start = which === "quick" ? quickW.value : logW.value;
+  const start = which === "quick" ? quickWidth.value : logWidth.value;
   const move = (ev: MouseEvent) => {
-    const v = Math.min(720, Math.max(220, start + (startX - ev.clientX)));
+    const v = Math.min(720, Math.max(200, start + (startX - ev.clientX)));
     if (which === "quick") quickW.value = v;
     else logW.value = v;
   };
   const up = () => {
     window.removeEventListener("mousemove", move);
     window.removeEventListener("mouseup", up);
-    localStorage.setItem("ml.quickW", String(quickW.value));
-    localStorage.setItem("ml.logW", String(logW.value));
+    finishDrag = undefined;
+    try {
+      localStorage.setItem("ml.quickW", String(quickW.value));
+      localStorage.setItem("ml.logW", String(logW.value));
+    } catch { /* Layout remains usable when storage is unavailable. */ }
   };
+  finishDrag = up;
   window.addEventListener("mousemove", move);
   window.addEventListener("mouseup", up);
 }
@@ -156,6 +189,7 @@ async function send() {
 }
 
 function onKey(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return;
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     send();
@@ -180,8 +214,11 @@ function onKey(e: KeyboardEvent) {
 <template>
   <div class="console">
     <header class="workspace-heading">
-      <div><span class="workspace-kicker">设备工作区</span><h2>串口控制台</h2><p>{{ connected ? '收发指令，查看设备响应；遇到异常时可进入诊断。' : '连接设备，开始第一次调试。常用指令可提前准备。' }}</p></div>
-      <n-button :type="connected ? 'primary' : 'default'" :disabled="!connected" @click="activeView = 'diag'">诊断当前设备 →</n-button>
+      <h2>串口控制台</h2>
+      <div class="heading-actions">
+        <n-button size="small" quaternary :aria-pressed="showQuickCommands" @click="showQuickCommands = !showQuickCommands">{{ showQuickCommands ? '收起快捷指令' : '展开快捷指令' }}</n-button>
+        <n-button size="small" secondary :disabled="!connected" @click="activeView = 'diag'">诊断当前设备</n-button>
+      </div>
     </header>
     <div class="toolbar" aria-label="终端显示设置">
       <n-input
@@ -209,7 +246,7 @@ function onKey(e: KeyboardEvent) {
     </div>
 
     <!-- 会话页签（多路串口：设备组在前，独立会话在后） -->
-    <div v-if="store.sessions.length" class="session-tabs">
+    <div v-if="visibleSessionCount > 1" class="session-tabs">
       <div
         v-for="g in store.deviceGroups"
         :key="g.id"
@@ -240,7 +277,7 @@ function onKey(e: KeyboardEvent) {
       </div>
     </div>
 
-    <div class="body">
+    <div ref="bodyEl" class="body">
       <!-- 输出 + 输入 -->
       <section class="io">
         <EmptyState v-if="!connected && !store.activeFrames.length" class="connection-empty" :icon="Cable"
@@ -259,8 +296,8 @@ function onKey(e: KeyboardEvent) {
           :empty-message="filterText ? '没有匹配过滤条件的行' : store.sessions.length ? '等待数据…' : '点击「连接设备」开始调试'"
         />
         <div class="statusbar">
-          <span>RX <b>{{ store.rxBytes.toLocaleString() }}</b> B</span>
-          <span>TX <b>{{ store.txBytes.toLocaleString() }}</b> B</span>
+          <span title="本次软件运行中所有端口的累计接收量">总 RX <b>{{ store.rxBytes.toLocaleString() }}</b> B</span>
+          <span title="本次软件运行中所有端口的累计发送量">总 TX <b>{{ store.txBytes.toLocaleString() }}</b> B</span>
           <span>{{ store.activeFrames.length.toLocaleString() }} 行</span>
           <span v-if="store.activeProfile" class="kb-hint">
             {{ store.activeProfile.id === 'generic' ? '通用指令集' : '型号' }}: {{ store.activeProfile.name }}
@@ -303,7 +340,7 @@ function onKey(e: KeyboardEvent) {
       <section
         v-if="store.activeDeviceGroup?.logPort"
         class="logpane"
-        :style="{ width: logW + 'px' }"
+        :style="{ width: logWidth + 'px' }"
       >
         <div class="logpane-head">
           <b>
@@ -327,8 +364,8 @@ function onKey(e: KeyboardEvent) {
       </section>
 
       <!-- 快捷指令面板（宽度可拖） -->
-      <div class="splitter" @mousedown="startDrag('quick', $event)" />
-      <QuickCommandPanel :style="{ width: quickW + 'px' }" />
+      <div v-show="showQuickCommands" class="splitter" @mousedown="startDrag('quick', $event)" />
+      <QuickCommandPanel v-show="showQuickCommands" :style="{ width: quickWidth + 'px' }" />
     </div>
 
 
@@ -346,9 +383,6 @@ function onKey(e: KeyboardEvent) {
   background: var(--surface-raised);
 }
 .toolbar > :not(.spacer) { flex-shrink: 0; }
-.profile-select { width: 320px; flex: 0 0 320px; }
-.lbl { font-size: 12px; color: var(--text-tertiary); }
-.spacer { flex: 1 1 24px; min-width: 24px; }
 
 .session-tabs {
   display: flex; gap: 4px; padding: 6px 12px 0; overflow-x: auto; overflow-y: hidden;
@@ -366,10 +400,10 @@ function onKey(e: KeyboardEvent) {
   color: var(--brand-primary);
   font-weight: 600;
 }
-.session-tab small { opacity: 0.6; font-weight: 400; }
+.session-tab small { color: var(--text-secondary); font-weight: 400; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-tertiary); }
 .dot.on { background: var(--status-success); box-shadow: 0 0 5px var(--status-success); }
-.tab-close { opacity: 0.45; padding: 0 2px; display: inline-flex; }
+.tab-close { color: var(--text-tertiary); padding: 0 2px; display: inline-flex; }
 .tab-close:hover { opacity: 1; color: var(--status-danger); }
 
 .body { flex: 1; display: flex; min-height: 0; }
@@ -380,14 +414,14 @@ function onKey(e: KeyboardEvent) {
   font-size: 12px; color: var(--text-tertiary); padding: 0 4px;
 }
 .statusbar b { color: var(--brand-primary); }
-.statusbar .err { color: var(--status-danger); display: inline-flex; align-items: center; gap: 4px; }
+.statusbar .err { color: var(--status-danger); display: inline-flex; align-items: center; gap: 4px; max-width: 100%; overflow-wrap: anywhere; }
 .kb-hint { color: var(--text-secondary); }
 
 .doc-hint {
   display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 8px; padding: 8px 10px;
   border-radius: 6px; background: var(--brand-primary-soft);
   font-size: 12px; line-height: 1.5;
-  color: var(--text-primary);
+  color: var(--text-primary); max-height: 140px; overflow-y: auto; flex-shrink: 0;
 }
 .doc-cmd {
   flex: 1 1 480px; min-width: 0; font-family: Consolas, monospace; color: var(--brand-primary);
@@ -398,7 +432,7 @@ function onKey(e: KeyboardEvent) {
   white-space: normal; overflow-wrap: anywhere;
 }
 
-.input-bar { display: flex; gap: 10px; align-items: stretch; }
+.input-bar { display: flex; gap: 10px; align-items: stretch; flex-shrink: 0; }
 .input-bar > :first-child { flex: 1; }
 .input-side { display: flex; flex-direction: column; justify-content: space-between; gap: 4px; }
 
@@ -410,7 +444,7 @@ function onKey(e: KeyboardEvent) {
 
 
 .logpane {
-  min-width: 220px; flex-shrink: 0; display: flex; flex-direction: column;
+  min-width: 200px; flex-shrink: 0; display: flex; flex-direction: column;
   padding: 10px 6px 10px 4px; gap: 8px;
 }
 .logpane-head {
@@ -419,19 +453,13 @@ function onKey(e: KeyboardEvent) {
 }
 .logpane-head b { display: inline-flex; align-items: center; gap: 6px; }
 .logpane-ops { display: flex; align-items: center; gap: 6px; }
-.edit-form { display: flex; flex-direction: column; gap: 12px; }
 
 /* === 工具类（替代 inline style） === */
-.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.field-row { display: flex; align-items: center; gap: 8px; }
-.field-row > .lbl { width: 46px; }
-.field-row > .flex-1 { flex: 1; }
 
-.workspace-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 22px 16px; }
-.workspace-kicker { color: var(--brand-primary); font-weight: 600; font-size: 12px; }
-.workspace-heading h2 { font-size: 20px; line-height: 1.4; margin: 5px 0; }
-.workspace-heading p { color: var(--text-secondary); font-size: 13px; margin: 0; }
-.toolbar { padding: 10px 16px; background: transparent; gap: 8px 12px; }
+.workspace-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 6px 14px; flex-shrink: 0; }
+.workspace-heading h2 { font-size: 14px; line-height: 24px; margin: 0; font-weight: 600; }
+.heading-actions { display: flex; align-items: center; gap: 8px; }
+.toolbar { padding: 6px 14px; background: transparent; gap: 6px 10px; flex-shrink: 0; }
 .toolbar :deep(.n-input) { margin-right: auto; }
 .body { padding: 4px 8px 8px; }
 .io { padding: 10px 8px; }

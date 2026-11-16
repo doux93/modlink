@@ -288,10 +288,10 @@ async function sendSelected(loop: boolean) {
     <div v-else class="quick-empty">
       <p>还没有快捷指令</p>
       <n-button size="small" type="primary" ghost @click="importIni">
-        导入 UART_V2.1 的 ini 配置
+        导入 ini 配置
       </n-button>
       <n-button size="small" quaternary @click="openEdit(-1)">或手动新建一条</n-button>
-      <small>零成本迁移：老工具的按钮布局、分组、勾选状态全部保留</small>
+      <small>支持旧版 UART 配置，也可手动添加常用指令。</small>
     </div>
 
 <!-- 指令编辑弹窗 -->
@@ -342,11 +342,11 @@ async function sendSelected(loop: boolean) {
 
 <style scoped>
 .quick {
-  min-width: 220px; flex-shrink: 0;
+  min-width: 200px; flex-shrink: 0;
   display: flex; flex-direction: column; padding: 10px 10px 10px 4px;
 }
 .quick-head {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 4px; justify-content: space-between; align-items: center;
   padding: 2px 2px 8px; color: var(--text-primary);
 }
 .quick-list { flex: 1; overflow-y: auto; margin-top: 6px; }
