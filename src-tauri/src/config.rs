@@ -44,7 +44,13 @@ pub(crate) fn load_settings(path: &Path) -> Result<Value, String> {
             validate_settings(&local)?;
             merge_json(&mut settings, local);
         }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            // Windows may return NotFound for an existing directory with a trailing separator.
+            match std::fs::symlink_metadata(path) {
+                Err(missing) if missing.kind() == std::io::ErrorKind::NotFound => {}
+                _ => return Err(format!("配置路径存在但无法读取，未使用默认值覆盖: {error}")),
+            }
+        }
         Err(error) => return Err(format!("配置读取失败，未使用默认值覆盖: {error}")),
     }
     Ok(settings)

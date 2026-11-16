@@ -12,7 +12,12 @@ fn backup(path: &Path) -> PathBuf {
 fn read(path: &Path) -> Result<Option<Vec<u8>>, String> {
     match fs::read(path) {
         Ok(bytes) => Ok(Some(bytes)),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            match fs::symlink_metadata(path) {
+                Err(missing) if missing.kind() == std::io::ErrorKind::NotFound => Ok(None),
+                _ => Err(format!("快捷指令路径存在但无法读取，原内容已保留: {error}")),
+            }
+        }
         Err(error) => Err(format!("读取快捷指令失败，原文件已保留: {error}")),
     }
 }
