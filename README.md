@@ -33,6 +33,7 @@ npm test                    # 前端回归测试
 npm run build               # 前端类型检查 + 构建
 cargo test --locked --manifest-path modulink-core/Cargo.toml
 cargo test --locked --manifest-path tests/storage/Cargo.toml
+python -m pip install -r tools/requirements.txt
 python -m unittest discover -s tools -p "test_*.py"
 ```
 
