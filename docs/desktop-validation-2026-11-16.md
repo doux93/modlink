@@ -38,6 +38,9 @@ CI 在原有检查之后执行 `tauri build --debug --no-bundle`，生成包含�
 
 CDP 环境变量只传给 CI 启动的子进程；普通启动不会开放该调试端口。
 实现参考 [Playwright 的 WebView2 文档](https://playwright.dev/docs/webview2)。
+GitHub Windows runner 默认以管理员运行；WebView2 150 起忽略这种进程的环境变量调试参数。
+验收步骤按 [Tauri 官方方案](https://github.com/tauri-apps/wry/issues/1782) 使用 gsudo 降为
+普通用户权限运行，仅给 runner 当前用户补充工作目录权限，不改应用或系统的 WebView2 安全策略。
 
 Actions 产物保留 14 天：`modulink-windows-preview` 是 debug 便携验收包，
 `windows-desktop-smoke` 是截图、进程日志和 `result.json`。

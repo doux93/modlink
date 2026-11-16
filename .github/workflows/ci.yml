@@ -38,7 +38,17 @@ jobs:
       - name: Package Windows preview with resources
         run: node scripts/package-windows-preview.mjs
       - name: Smoke test packaged Windows WebView
-        run: node scripts/smoke-windows-desktop.mjs
+        # WebView2 150+ ignores env-based CDP arguments for elevated hosts.
+        # Follow Tauri's own e2e setup and run the test at medium integrity.
+        # https://github.com/tauri-apps/wry/issues/1782
+        run: |
+          choco install gsudo --no-progress -y
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $runnerSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+          icacls "$env:GITHUB_WORKSPACE" /grant "*${runnerSid}:(OI)(CI)F"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gsudo --integrity Medium node scripts/smoke-windows-desktop.mjs
+          exit $LASTEXITCODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
