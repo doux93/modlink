@@ -1,0 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+/knowledge-pack/
+/artifacts/knowledge-packs/
+**/target/
+**/__pycache__/
+*.py[cod]
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 本地设置(含 API key)，不入库
+data/settings.json
+data/quickcmds/current.json
+
+# 原始未脱敏索引（仅供内部覆盖率分析，不入库不打包）
+tools/kb_index/
+
+# 测试导出的临时配置文件，不入库
+tests/fixtures/*导出.ini
