@@ -39,8 +39,16 @@ python -m unittest discover -s tools -p "test_*.py"
 
 Rust 由 `rust-toolchain.toml` 固定为 **1.94.0**，通过 rustup 自动选择；建议使用
 Node.js 20 和 Windows MSVC 工具链。固定版本避免现有 Tauri 构建脚本与更新版
-Cargo 构建目录布局不兼容。完整桌面测试在 Windows 运行：
-`cargo test --locked --manifest-path src-tauri/Cargo.toml --lib`。
+Cargo 构建目录布局不兼容。完整桌面测试在 Windows PowerShell 运行：
+
+```powershell
+$env:MODULINK_TEST_MANIFEST = "1"
+cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
+Remove-Item Env:MODULINK_TEST_MANIFEST
+```
+
+此变量仅为 MSVC 测试程序嵌入 Common Controls v6 manifest，解决测试启动时的
+`STATUS_ENTRYPOINT_NOT_FOUND`；普通应用构建继续由 Tauri 管理 manifest。
 涉及真实串口的 ignored 测试需要按测试说明配置设备后单独运行。
 
 当前修复、存储迁移和实机验收步骤见 [修复说明](docs/repair-notes-2026-11-16.md)。
