@@ -16,8 +16,9 @@ import {
   FlaskConical,
   Bot,
   BookOpen,
-  Settings,
-  BarChart3,
+  Wrench,
+  PanelLeftClose,
+  PanelLeftOpen,
   History,
   Sun,
   Moon,
@@ -28,6 +29,7 @@ import AppIcon from "./components/AppIcon.vue";
 import BrandMark from "./components/BrandMark.vue";
 import { useExecutionStore } from "./stores/execution";
 import { useSerialStore } from "./stores/serial";
+import { useWorkspace } from "./composables/useWorkspace";
 import { useOnboarding } from "./composables/useOnboarding";
 import { useUiPrefs, type ViewKey } from "./composables/useUiPrefs";
 import { lightThemeOverrides, darkThemeOverrides } from "./styles/theme-overrides";
@@ -35,14 +37,18 @@ import WelcomeOverlay from "./components/onboarding/WelcomeOverlay.vue";
 
 const executionStore = useExecutionStore();
 const serialStore = useSerialStore();
-const { theme, activeView: active, applyInitialTheme } = useUiPrefs();
+const { theme, activeView: active, applyInitialTheme, sidebarCollapsed } = useUiPrefs();
 applyInitialTheme();
 
 void executionStore.init();
 void serialStore.init();
 
 const ExecutionDrawer = defineAsyncComponent(() => import("./components/ExecutionDrawer.vue"));
-const showExecutionHistory = ref(false);
+const { historyOpen: showExecutionHistory, connectionOpen } = useWorkspace();
+const DeviceConnectionDialog = defineAsyncComponent(() => import("./components/DeviceConnectionDialog.vue"));
+const connectionLoaded = ref(false);
+watch(connectionOpen, (open) => { if (open) connectionLoaded.value = true; }, { immediate: true });
+const showTools = ref(false);
 const historyLoaded = ref(false);
 watch(showExecutionHistory, (show) => { if (show) historyLoaded.value = true; });
 function closeDrawer() {
@@ -54,6 +60,7 @@ function onNavigate(view: string) {
     active.value = view as ViewKey;
   }
   closeDrawer();
+  showTools.value = false;
 }
 
 const views = {
@@ -70,19 +77,19 @@ const themeOverrides = computed(() => (theme.value === "dark" ? darkThemeOverrid
 
 const menu = [
   { key: "console", label: "串口控制台", icon: Terminal },
-  { key: "diag", label: "验证中心", icon: FlaskConical },
+  { key: "diag", label: "设备诊断", icon: FlaskConical },
   { key: "ai", label: "AI 助手", icon: Bot },
   { key: "kb", label: "知识中心", icon: BookOpen },
-  { key: "stress", label: "稳定性验证", icon: Settings },
-  { key: "logs", label: "日志分析", icon: BarChart3 },
 ] as const;
 
 const ActiveView = computed(() => views[active.value]);
 
 // 首启引导：未连接任何会话 + 未完成过引导 → 显示
-const { completed: onboarded, dismiss, reset: showHelp } = useOnboarding();
+const { completed: onboarded, dismiss } = useOnboarding();
+const helpRequested = ref(false);
+function showHelp() { helpRequested.value = true; }
 const showWelcome = computed(
-  () => !onboarded.value && serialStore.sessions.length === 0
+  () => helpRequested.value || (!onboarded.value && serialStore.sessions.length === 0)
 );
 
 // 用户打开了会话（即便没点引导 CTA）→ 也视为完成引导，避免反复出现
@@ -103,7 +110,7 @@ watch(
   >
     <n-message-provider>
       <n-dialog-provider>
-        <div class="shell">
+        <div class="shell" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
           <aside class="sidebar">
             <div class="brand">
               <BrandMark :size="34" />
@@ -112,6 +119,7 @@ watch(
                 <small>模组智能调测</small>
               </div>
             </div>
+            <div class="nav-section-label">工作区</div>
             <nav aria-label="主导航">
               <div
                 v-for="m in menu"
@@ -130,6 +138,16 @@ watch(
                 <span class="nav-label">{{ m.label }}</span>
               </div>
             </nav>
+            <div class="advanced-tools" @keydown.esc="showTools = false">
+              <button class="nav-item tools-trigger" :class="{ active: active === 'stress' || active === 'logs' }" title="高级工具" :aria-expanded="showTools" @click="showTools = !showTools">
+                <AppIcon :icon="Wrench" class="nav-icon" /><span class="nav-label">高级工具</span>
+              </button>
+              <div v-if="showTools" class="tools-menu">
+                <p>按需使用的辅助工具</p>
+                <button @click="onNavigate('logs')">日志分析</button>
+                <button @click="onNavigate('stress')">稳定性验证</button>
+              </div>
+            </div>
             <div
               class="nav-item execution-entry"
               title="执行记录"
@@ -145,12 +163,16 @@ watch(
                 {{ executionStore.runningCount }}
               </span>
             </div>
+            <button class="sidebar-toggle" :aria-label="sidebarCollapsed ? '展开导航' : '收起导航'" :title="sidebarCollapsed ? '展开导航' : '收起导航'" @click="sidebarCollapsed = !sidebarCollapsed">
+              <AppIcon :icon="sidebarCollapsed ? PanelLeftOpen : PanelLeftClose" :size="17" /><span class="nav-label">收起导航</span>
+            </button>
             <div class="sidebar-footer">
               <n-button
                 size="tiny"
                 quaternary
                 circle
                 title="查看新手引导"
+                aria-label="查看新手引导"
                 @click="showHelp"
               >
                 <template #icon>
@@ -182,7 +204,8 @@ watch(
           </main>
           <ExecutionDrawer v-if="historyLoaded" v-model:show="showExecutionHistory" @navigate="onNavigate" />
         </div>
-        <WelcomeOverlay v-if="showWelcome" />
+        <WelcomeOverlay v-if="showWelcome" @navigate="onNavigate" @close="helpRequested = false" />
+        <DeviceConnectionDialog v-if="connectionLoaded" />
       </n-dialog-provider>
     </n-message-provider>
   </n-config-provider>
@@ -204,7 +227,7 @@ watch(
 }
 
 .sidebar {
-  width: 200px;
+  width: 176px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -328,33 +351,48 @@ nav {
   display: flex;
 }
 
-@media (max-width: 1120px) {
-  .sidebar {
+/* Collapse is an explicit, persisted preference; labels remain visible by default. */
+.sidebar-collapsed .sidebar {
     width: 64px;
     padding: 14px 8px;
   }
-  .brand {
+.sidebar-collapsed .brand {
     justify-content: center;
     padding: 4px 0 18px;
   }
-  .brand-text,
-  .nav-label,
-  .version {
+.sidebar-collapsed .brand-text,
+.sidebar-collapsed .nav-label,
+.sidebar-collapsed .version {
     display: none;
   }
-  .nav-item {
+.sidebar-collapsed .nav-item {
     justify-content: center;
     padding: 10px 0;
   }
-  .execution-entry .running-count {
+.sidebar-collapsed .execution-entry .running-count {
     position: absolute;
     top: 4px;
     right: 4px;
     margin-left: 0;
   }
-  .sidebar-footer {
+.sidebar-collapsed .sidebar-footer {
     justify-content: center;
     padding: 8px 0;
   }
-}
+
+.nav-item { text-align: left; font: inherit; border: 0; }
+.advanced-tools { position: relative; margin-top: 12px; }
+.tools-trigger { width: 100%; background: transparent; }
+.tools-menu { position: absolute; left: calc(100% + 12px); top: 0; z-index: 30; width: 190px; padding: 8px; background: var(--surface-raised); border: 1px solid var(--border-default); border-radius: 10px; box-shadow: var(--shadow-lg); }
+.tools-menu p { padding: 6px 8px; color: var(--text-tertiary); font-size: 12px; }
+.tools-menu button { display: block; padding: 10px; width: 100%; text-align: left; background: transparent; color: var(--text-primary); border: 0; border-radius: 6px; cursor: pointer; }
+.tools-menu button:hover { background: var(--surface-hover); }
+.sidebar-toggle { display: flex; align-items: center; gap: 12px; padding: 12px; border: 0; background: transparent; color: var(--text-secondary); cursor: pointer; }
+
+.nav-section-label { padding: 4px 10px 10px; font-size: 11px; color: var(--text-tertiary); letter-spacing: 1px; }
+.sidebar-collapsed .nav-section-label { display: none; }
+.sidebar { padding-top: 20px; }
+.nav-item { min-height: 42px; font-size: 13px; }
+.execution-entry { margin-bottom: 8px; }
+.sidebar-toggle { border-top: 1px solid var(--border-subtle); }
 </style>

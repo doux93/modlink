@@ -13,6 +13,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { RefreshCw, Settings } from "@lucide/vue";
 import AppIcon from "../components/AppIcon.vue";
 import AiToolCard from "../components/ai/AiToolCard.vue";
+import { useWorkspace } from "../composables/useWorkspace";
+import { useUiPrefs } from "../composables/useUiPrefs";
 import { useSerialStore } from "../stores/serial";
 import { useExecutionStore } from "../stores/execution";
 import { applicableAtCommands } from "../knowledge";
@@ -34,6 +36,8 @@ const store = useSerialStore();
 const execStore = useExecutionStore();
 const message = useMessage();
 const dialog = useDialog();
+const { connectDevice } = useWorkspace();
+const { activeView } = useUiPrefs();
 
 // ---------------- 配置 ----------------
 interface AiSettings {
@@ -1174,6 +1178,8 @@ const QUICK_ASKS = [
 ];
 
 const connected = computed(() => store.activeSession?.connected ?? false);
+const attachedLogCount = computed(() => Math.min(store.activeFrames.length, settings.value.recent_log_lines));
+const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资料" : activeManualMode() === "fulltext" ? "可检索全文手册" : activeManualMode() === "preview" ? "仅有摘要参考" : "暂无可用手册");
 </script>
 
 <template>
@@ -1182,7 +1188,7 @@ const connected = computed(() => store.activeSession?.connected ?? false);
       <div>
         <h2>AI 调试助手</h2>
         <p class="sub">
-          自动携带模组画像 + 最近日志上下文 ·
+          结合设备证据分析问题 ·
           <b :class="ruleMode ? 'mode-rule' : 'mode-ai'">{{ ruleMode ? "规则引擎模式（离线）" : "AI 模式" }}</b>
           <template v-if="connected"> · {{ store.activePort }}</template>
           <template v-else> · <span class="warn">串口未连接，AI 无法替你执行指令</span></template>
@@ -1205,11 +1211,19 @@ const connected = computed(() => store.activeSession?.connected ?? false);
       </div>
     </header>
 
+    <div class="ai-context" aria-label="本轮分析上下文">
+      <span>目标设备 <b>{{ connected ? store.activePort : '未连接，可咨询或分析已有材料' }}</b></span>
+      <span>附带日志 <b>{{ attachedLogCount }} 条</b></span><span>资料 <b>{{ manualLabel }}</b></span>
+      <n-button v-if="!connected" size="small" secondary @click="connectDevice">连接设备</n-button>
+      <n-button v-if="!settings.base_url" size="small" secondary @click="showSettings = true">配置 AI 服务</n-button>
+      <n-button v-if="connected" size="small" text @click="activeView = 'diag'">返回诊断与复测</n-button>
+    </div>
+    <details v-if="attachedLogCount" class="context-preview"><summary>查看随问题发送的最近串口日志</summary><pre>{{ recentLog(settings.recent_log_lines) }}</pre></details>
     <div ref="listRef" class="chat">
       <div v-if="!ui.length" class="welcome">
         <div class="welcome-head">
           <div class="welcome-eyebrow">AI 助手</div>
-          <p>我是模组调试助手，了解你当前的串口日志和模组手册。试试：</p>
+          <p>{{ connected ? "可以分析当前设备的日志，也可以从诊断结果带入异常。建议发送后，你可以逐项确认是否执行。" : "连接设备后可分析现场问题；也可以先描述故障，或粘贴已有日志。可用资料范围显示在上方。" }}</p>
         </div>
         <div class="quick-asks">
           <n-button v-for="q in QUICK_ASKS" :key="q" size="small" secondary @click="send(q)">
@@ -1345,4 +1359,10 @@ h2 { font-size: 18px; color: var(--text-primary); }
 .cfg-key-row .cfg-key-input { flex: 1; min-width: 0; }
 .cfg-input-model { flex: 1; }
 .cfg-input-num { width: 160px; }
+
+.ai-context { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-raised); font-size: 12px; color: var(--text-secondary); }
+.ai-context b { margin-left: 5px; color: var(--text-primary); font-weight: 500; }
+.context-preview { margin: 0 0 8px; color: var(--text-secondary); font-size: 12px; }
+.context-preview summary { cursor: pointer; }
+.context-preview pre { max-height: 140px; overflow: auto; white-space: pre-wrap; padding: 12px; background: var(--surface-raised); }
 </style>

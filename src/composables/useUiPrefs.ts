@@ -46,6 +46,8 @@ function readFontSize(): number {
   return Number.isFinite(n) && n >= 10 && n <= 24 ? n : 13;
 }
 const fontSize = ref<number>(readFontSize());
+const sidebarCollapsed = ref(safeGet("ml.sidebarCollapsed") === "1");
+watch(sidebarCollapsed, (value) => safeSet("ml.sidebarCollapsed", value ? "1" : "0"));
 
 watch(theme, (v) => {
   safeSet("ml.theme", v);
@@ -72,6 +74,7 @@ export function useUiPrefs() {
     theme,
     activeView,
     fontSize,
+    sidebarCollapsed,
     applyInitialTheme,
   };
 }

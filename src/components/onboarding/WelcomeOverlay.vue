@@ -4,7 +4,10 @@ import { Cable, Usb, Activity, ArrowRight, X } from "@lucide/vue";
 import AppIcon from "../AppIcon.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
 
-const { dismiss } = useOnboarding();
+const { dismiss: complete } = useOnboarding();
+const emit = defineEmits<{ navigate: [view: string]; close: [] }>();
+function dismiss() { complete(); emit("close"); }
+let focusTimer: ReturnType<typeof setTimeout> | undefined;
 const cardRef = ref<HTMLDivElement | null>(null);
 
 function onKeydown(e: KeyboardEvent) {
@@ -14,10 +17,11 @@ function onKeydown(e: KeyboardEvent) {
 onMounted(() => {
   document.addEventListener("keydown", onKeydown);
   // 进入动画结束后聚焦主按钮，方便键盘用户直接 Enter
-  setTimeout(() => cardRef.value?.querySelector<HTMLButtonElement>(".welcome-cta")?.focus(), 100);
+  focusTimer = setTimeout(() => cardRef.value?.querySelector<HTMLButtonElement>(".welcome-cta")?.focus(), 100);
 });
 onUnmounted(() => {
   document.removeEventListener("keydown", onKeydown);
+  clearTimeout(focusTimer);
 });
 
 const steps = [
@@ -29,16 +33,17 @@ const steps = [
   {
     icon: Cable,
     title: "选择串口",
-    desc: "打开「串口控制台」，在端口下拉里选择模组对应的 COM 口（Windows）或 /dev/ttyUSB*（Linux）。",
+    desc: "点击「连接设备」，选择设备的 AT 串口和波特率；多个设备可在顶部切换。",
   },
   {
     icon: Activity,
     title: "一键体检",
-    desc: "进入「验证中心」，点运行 — 软件会自动识别模组型号、跑一遍注网体检，并在 30 秒内告诉你哪里出问题。",
+    desc: "进入「设备诊断」运行基础检查，查看异常与建议，处理后复测并导出报告。",
   },
 ];
 
 function gotoConsole() {
+  emit("navigate", "console");
   dismiss();
 }
 </script>
@@ -52,8 +57,8 @@ function gotoConsole() {
 
       <header class="welcome-head">
         <div class="welcome-eyebrow">首次使用</div>
-        <h2>30 秒开始第一次调测</h2>
-        <p>ModuLink Studio 是蜂窝模组的串口调试工作台。三步走完就能上手。</p>
+        <h2>开始第一次设备调测</h2>
+        <p>ModuLink Studio 是蜂窝模组的串口调试工作台。从连接设备开始，逐步定位问题。</p>
       </header>
 
       <ol class="welcome-steps">

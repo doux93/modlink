@@ -59,11 +59,16 @@ try {
   checks.push("packaged knowledge loaded through IPC");
   const closeWelcome = page.getByRole("button", { name: "关闭引导", exact: true });
   if (await closeWelcome.isVisible()) await closeWelcome.click();
-  const pages = [["串口控制台", ".console"], ["验证中心", ".diag"], ["AI 助手", ".ai"], ["知识中心", ".kb-page"], ["稳定性验证", ".stress"], ["日志分析", ".log-analysis"]];
+  const pages = [["串口控制台", ".console"], ["设备诊断", ".diag"], ["AI 助手", ".ai"], ["知识中心", ".kb-page"], ["稳定性验证", ".stress"], ["日志分析", ".log-analysis"]];
   for (const theme of ["dark", "light"]) {
     if (await page.locator("html").getAttribute("data-theme") !== theme) await page.locator(".sidebar-footer [role=switch]").click();
     for (const [name, selector] of pages) {
-      await page.getByRole("link", { name, exact: true }).click();
+      if (selector === ".stress" || selector === ".log-analysis") {
+        await page.getByRole("button", { name: "高级工具", exact: true }).click();
+        await page.getByRole("button", { name, exact: true }).click();
+      } else {
+        await page.getByRole("link", { name, exact: true }).click();
+      }
       await page.locator(selector).waitFor();
       await page.evaluate(() => document.fonts.ready);
       assert.equal(await page.locator("#global-error-overlay").count(), 0, `Runtime error on ${name}`);
@@ -71,6 +76,20 @@ try {
       checks.push(`${theme}: ${name}`);
     }
   }
+  assert.equal(await page.locator('nav[aria-label="主导航"] [role=link]').count(), 4);
+  await page.getByRole("link", { name: "设备诊断", exact: true }).click();
+  await page.locator(".diag").getByRole("button", { name: "连接设备", exact: true }).click();
+  await page.locator(".connection-dialog").waitFor();
+  await page.screenshot({ path: path.join(output, "connection-dialog.png"), animations: "disabled" });
+  await page.locator(".connection-dialog").getByRole("button", { name: "取消", exact: true }).click();
+  await page.locator(".connection-dialog").waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "收起导航", exact: true }).click();
+  assert(await page.locator(".shell").evaluate((el) => el.classList.contains("sidebar-collapsed")));
+  await page.getByRole("button", { name: "展开导航", exact: true }).click();
+  await page.getByRole("button", { name: "查看新手引导", exact: true }).click();
+  await page.getByRole("button", { name: "打开串口控制台", exact: true }).click();
+  await page.locator(".console").waitFor();
+  checks.push("four primary destinations", "shared connection dialog from diagnosis", "explicit navigation collapse", "welcome navigates to console");
   await page.getByRole("link", { name: "执行记录", exact: true }).click();
   await page.locator(".n-drawer").waitFor();
   await page.screenshot({ path: path.join(output, "execution-history.png"), animations: "disabled" });

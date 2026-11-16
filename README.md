@@ -57,6 +57,7 @@ Remove-Item Env:MODULINK_TEST_MANIFEST
 当前修复、存储迁移和实机验收步骤见 [修复说明](docs/repair-notes-2026-11-16.md)。
 页面拆分、按需加载和 Windows CI 改进见 [第二轮优化说明](docs/frontend-refactor-2026-11-16.md)。
 AI 网络取消与桌面验收流程见 [第三轮优化说明](docs/desktop-validation-2026-11-16.md)。
+设备连接、诊断复测与界面调整见 [工作区说明](docs/product-workspace-2026-11-16.md)。
 
 ## 无真机联调
 

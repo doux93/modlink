@@ -2,10 +2,7 @@
 import {
   NButton,
   NCheckbox,
-  NDivider,
   NInput,
-  NModal,
-  NSelect,
   NTag,
   NTooltip,
   useMessage,
@@ -14,6 +11,8 @@ import { ref, computed, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { X, Cable, FileText, AlertTriangle } from "@lucide/vue";
+import EmptyState from "../components/EmptyState.vue";
+import { useWorkspace } from "../composables/useWorkspace";
 import AppIcon from "../components/AppIcon.vue";
 import QuickCommandPanel from "../components/console/QuickCommandPanel.vue";
 import TerminalLog from "../components/console/TerminalLog.vue";
@@ -23,109 +22,14 @@ import { useUiPrefs } from "../composables/useUiPrefs";
 
 const store = useSerialStore();
 const message = useMessage();
+const { connectDevice } = useWorkspace();
+const { activeView } = useUiPrefs();
 
 onMounted(() => store.init());
-
-// ---------------- 连接 / 会话 ----------------
-const baudPresets = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600];
-const baudOptions = [
-  ...baudPresets.map((b) => ({ label: String(b), value: b })),
-  { label: "自定义", value: -1 },
-];
-const portOptions = computed(() =>
-  store.ports.map((p) => ({
-    label: p.description ? `${p.name} (${p.description})` : p.name,
-    value: p.name,
-    disabled: store.sessions.some((s) => s.port === p.name),
-  }))
-);
-const profileOptions = computed(() => {
-  const rank: Record<string, number> = { verified: 0, reference: 1, generic: 2 };
-  const supportLabel: Record<string, string> = { verified: "已验证", reference: "资料画像" };
-  return [...(store.knowledge?.profiles ?? [])]
-    .sort((a, b) =>
-      (rank[a.support_level] ?? 3) - (rank[b.support_level] ?? 3) ||
-      a.name.localeCompare(b.name, "zh-CN", { numeric: true })
-    )
-    .map((p) => ({
-      label: supportLabel[p.support_level]
-        ? `${p.name} · ${supportLabel[p.support_level]}`
-        : p.name,
-      value: p.id,
-    }));
-});
-
-async function connect() {
-  try {
-    const port = store.selPort;
-    await store.openSession();
-    message.success(`已连接 ${store.activePort} @ ${store.baud}`);
-    // 型号自动识别结果提示（异步，不阻塞）
-    store.detectProfile(port).then((name) => {
-      if (name) message.info(`已识别模组型号，切换画像：${name}`);
-    });
-  } catch (e) {
-    message.error(String(e));
-  }
-}
 
 async function closeTab(port: string) {
   try {
     await store.closeSession(port);
-  } catch (e) {
-    message.error(String(e));
-  }
-}
-
-// ---------------- 设备组（AT 口 + 日志口分屏） ----------------
-const showGroupModal = ref(false);
-const gName = ref("");
-const gAtPort = ref("");
-const gAtBaud = ref(115200);
-const gLogPort = ref("");
-const gLogBaud = ref(921600);
-const baudCustomMode = ref(false);
-const baudCustomText = ref("");
-const gAtBaudCustomMode = ref(false);
-const gAtBaudCustomText = ref("");
-const gLogBaudCustomMode = ref(false);
-const gLogBaudCustomText = ref("");
-
-const freePortOptions = computed(() =>
-  store.ports
-    .filter((p) => !store.sessions.some((s) => s.port === p.name))
-    .map((p) => ({
-      label: p.description ? `${p.name} (${p.description})` : p.name,
-      value: p.name,
-    }))
-);
-
-function openGroupModal() {
-  gName.value = "";
-  gAtPort.value = freePortOptions.value[0]?.value ?? "";
-  gLogPort.value = "";
-  showGroupModal.value = true;
-}
-
-async function createGroup() {
-  if (!gAtPort.value) {
-    message.warning("请选择 AT 口");
-    return;
-  }
-  try {
-    await store.createDeviceGroup(
-      gName.value.trim(),
-      gAtPort.value,
-      gAtBaud.value,
-      gLogPort.value === gAtPort.value ? "" : gLogPort.value,
-      gLogBaud.value
-    );
-    showGroupModal.value = false;
-    message.success(`设备组已创建：${gAtPort.value}${gLogPort.value ? " + " + gLogPort.value : ""}`);
-    store.detectProfile(gAtPort.value).then((name) => {
-      if (name) message.info(`已识别模组型号，切换画像：${name}`);
-    });
-    if (store.lastError) message.warning(store.lastError);
   } catch (e) {
     message.error(String(e));
   }
@@ -158,14 +62,6 @@ async function saveLogPane() {
   if (!path) return;
   await invoke("export_session_log", { port: lp, path });
   message.success("日志口数据已保存");
-}
-
-async function reloadKb() {
-  await store.reloadKnowledge();
-  message.success(
-    `知识库已重载：${store.knowledge?.profiles.length ?? 0} 个模组画像，` +
-      `${Object.keys(store.knowledge?.error_codes ?? {}).length} 条错误码`
-  );
 }
 
 // ---------------- 布局：可拖动分栏（宽度持久化） ----------------
@@ -283,44 +179,11 @@ function onKey(e: KeyboardEvent) {
 
 <template>
   <div class="console">
-    <!-- 顶部连接栏 -->
-    <header class="toolbar">
-      <n-select
-        v-model:value="store.selPort"
-        :options="portOptions"
-        size="small"
-        style="width: 220px"
-        placeholder="选择串口"
-      />
-      <n-button size="small" quaternary @click="store.refreshPorts()">刷新</n-button>
-      <n-input v-if="baudCustomMode" :value="baudCustomText" @update:value="(v: string) => { const t = v.replace(/\D/g, ''); baudCustomText = t; const n = parseInt(t || '0', 10); if (n > 0) store.baud = n; }" @blur="() => { if (!baudCustomText) { baudCustomMode = false; } }" size="small" style="width: 105px" placeholder="输入波特率" /><n-select v-else v-model:value="store.baud" :options="baudOptions" size="small" style="width: 105px" @update:value="(v: number) => { if (v === -1) { baudCustomMode = true; const prev = store.baud; baudCustomText = String(prev > 0 ? prev : 115200); store.baud = prev > 0 ? prev : 115200; } }" />
-      <n-button size="small" type="primary" @click="connect">打开会话</n-button>
-      <n-tooltip trigger="hover">
-        <template #trigger>
-          <n-button size="small" secondary @click="openGroupModal">＋设备组</n-button>
-        </template>
-        AT 口 + 日志口绑定为一个设备，分屏显示（Cat1/RedCap 双口调试）
-      </n-tooltip>
-      <n-divider vertical />
-      <span class="lbl">模组</span>
-      <n-select
-        class="profile-select"
-        :value="store.activeProfileId"
-        @update:value="store.setActiveProfile"
-        :options="profileOptions"
-        :consistent-menu-width="false"
-        :title="store.activeProfile?.name"
-        filterable
-        size="small"
-        placeholder="选择模组画像"
-      />
-      <n-tooltip trigger="hover">
-        <template #trigger>
-          <n-button size="small" quaternary @click="reloadKb">↻</n-button>
-        </template>
-        热重载知识库（data/ 目录的 YAML 改完即生效）
-      </n-tooltip>
-      <div class="spacer" />
+    <header class="workspace-heading">
+      <div><span class="workspace-kicker">设备工作区</span><h2>串口控制台</h2><p>{{ connected ? '收发指令，查看设备响应；遇到异常时可进入诊断。' : '连接设备，开始第一次调试。常用指令可提前准备。' }}</p></div>
+      <n-button :type="connected ? 'primary' : 'default'" :disabled="!connected" @click="activeView = 'diag'">诊断当前设备 →</n-button>
+    </header>
+    <div class="toolbar" aria-label="终端显示设置">
       <n-input
         v-model:value="filterText"
         size="small"
@@ -343,7 +206,7 @@ function onKey(e: KeyboardEvent) {
       <n-button size="small" quaternary :disabled="!store.activePort" @click="store.clear()">
         清屏
       </n-button>
-    </header>
+    </div>
 
     <!-- 会话页签（多路串口：设备组在前，独立会话在后） -->
     <div v-if="store.sessions.length" class="session-tabs">
@@ -380,7 +243,10 @@ function onKey(e: KeyboardEvent) {
     <div class="body">
       <!-- 输出 + 输入 -->
       <section class="io">
-        <TerminalLog
+        <EmptyState v-if="!connected && !store.activeFrames.length" class="connection-empty" :icon="Cable"
+          :title="store.sessions.length ? '当前设备已断开' : '准备好开始调试了吗'" description="选择 AT 串口与波特率，连接后可发送指令，或运行基础诊断定位问题。"
+          action-label="连接设备" @action="connectDevice" />
+        <TerminalLog v-else
           :frames="displayedFrames"
           :source-key="`${store.activePort}:${store.activeSession?.generation ?? 0}`"
           :hidden-count="hiddenCount"
@@ -390,14 +256,14 @@ function onKey(e: KeyboardEvent) {
           :auto-scroll="autoScroll"
           :error-codes="store.activeErrorCodes"
           :urc-patterns="store.activeProfile?.urc_patterns ?? []"
-          :empty-message="filterText ? '没有匹配过滤条件的行' : store.sessions.length ? '等待数据…' : '选择串口并点击「打开会话」开始（可同时打开多个）'"
+          :empty-message="filterText ? '没有匹配过滤条件的行' : store.sessions.length ? '等待数据…' : '点击「连接设备」开始调试'"
         />
         <div class="statusbar">
           <span>RX <b>{{ store.rxBytes.toLocaleString() }}</b> B</span>
           <span>TX <b>{{ store.txBytes.toLocaleString() }}</b> B</span>
           <span>{{ store.activeFrames.length.toLocaleString() }} 行</span>
           <span v-if="store.activeProfile" class="kb-hint">
-            画像: {{ store.activeProfile.name }}
+            型号: {{ store.activeProfile.name }}
           </span>
           <span v-if="store.lastError" class="err">
             <AppIcon :icon="AlertTriangle" :size="13" />
@@ -467,41 +333,12 @@ function onKey(e: KeyboardEvent) {
 
 
 
-    <!-- 新建设备组弹窗 -->
-    <n-modal v-model:show="showGroupModal" preset="card" style="width: 480px" title="新建设备组（AT 口 + 日志口）">
-      <div class="edit-form">
-        <n-input v-model:value="gName" placeholder="设备名称（可选，如：1号板）" />
-        <div class="edit-row">
-          <span class="lbl" style="width: 46px">AT 口</span>
-          <n-select v-model:value="gAtPort" :options="freePortOptions" size="small" style="flex: 1" />
-          <n-input v-if="gAtBaudCustomMode" :value="gAtBaudCustomText" @update:value="(v: string) => { const t = v.replace(/\D/g, ''); gAtBaudCustomText = t; const n = parseInt(t || '0', 10); if (n > 0) gAtBaud = n; }" @blur="() => { if (!gAtBaudCustomText) { gAtBaudCustomMode = false; } }" size="small" style="width: 105px" placeholder="输入波特率" /><n-select v-else v-model:value="gAtBaud" :options="baudOptions" size="small" style="width: 105px" @update:value="(v: number) => { if (v === -1) { gAtBaudCustomMode = true; const prev = gAtBaud; gAtBaudCustomText = String(prev > 0 ? prev : 115200); gAtBaud = prev > 0 ? prev : 115200; } }" />
-        </div>
-        <div class="edit-row">
-          <span class="lbl" style="width: 46px">日志口</span>
-          <n-select
-            v-model:value="gLogPort"
-            :options="freePortOptions.filter((o) => o.value !== gAtPort)"
-            size="small"
-            style="flex: 1"
-            placeholder="可选，不选则只开 AT 口"
-            clearable
-          />
-          <n-input v-if="gLogBaudCustomMode" :value="gLogBaudCustomText" @update:value="(v: string) => { const t = v.replace(/\D/g, ''); gLogBaudCustomText = t; const n = parseInt(t || '0', 10); if (n > 0) gLogBaud = n; }" @blur="() => { if (!gLogBaudCustomText) { gLogBaudCustomMode = false; } }" size="small" style="width: 105px" placeholder="输入波特率" /><n-select v-else v-model:value="gLogBaud" :options="baudOptions" size="small" style="width: 105px" @update:value="(v: number) => { if (v === -1) { gLogBaudCustomMode = true; const prev = gLogBaud; gLogBaudCustomText = String(prev > 0 ? prev : 921600); gLogBaud = prev > 0 ? prev : 921600; } }" />
-        </div>
-      </div>
-      <template #footer>
-        <div class="modal-actions">
-          <n-button @click="showGroupModal = false">取消</n-button>
-          <n-button type="primary" @click="createGroup">创建并连接</n-button>
-        </div>
-      </template>
-    </n-modal>
-
 
   </div>
 </template>
 
 <style scoped>
+.connection-empty { flex: 1; background: var(--surface-raised); border: 1px dashed var(--border-default); border-radius: 10px; }
 .console { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 .toolbar {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px;
@@ -589,4 +426,13 @@ function onKey(e: KeyboardEvent) {
 .field-row { display: flex; align-items: center; gap: 8px; }
 .field-row > .lbl { width: 46px; }
 .field-row > .flex-1 { flex: 1; }
+
+.workspace-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 22px 16px; }
+.workspace-kicker { color: var(--brand-primary); font-weight: 600; font-size: 12px; }
+.workspace-heading h2 { font-size: 20px; line-height: 1.4; margin: 5px 0; }
+.workspace-heading p { color: var(--text-secondary); font-size: 13px; margin: 0; }
+.toolbar { padding: 10px 16px; background: transparent; gap: 8px 12px; }
+.toolbar :deep(.n-input) { margin-right: auto; }
+.body { padding: 4px 8px 8px; }
+.io { padding: 10px 8px; }
 </style>

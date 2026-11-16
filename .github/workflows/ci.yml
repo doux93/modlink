@@ -48,6 +48,8 @@ jobs:
           icacls "$env:GITHUB_WORKSPACE" /grant "*${runnerSid}:(OI)(CI)F"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           gsudo --integrity Medium node scripts/smoke-windows-desktop.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gsudo --integrity Medium node scripts/smoke-product-flow.mjs
           exit $LASTEXITCODE
       - uses: actions/upload-artifact@v4
         if: always()
