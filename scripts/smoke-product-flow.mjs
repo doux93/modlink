@@ -99,6 +99,8 @@ try{
  await page.getByPlaceholder('Base URL，如 https://onerouter.cmaiot.cn/v1',{exact:true}).fill('https://fixture.invalid/v1');
  await page.locator('.cfg-modal').getByRole('button',{name:'保存',exact:true}).click();
  await page.locator('.cfg-error').waitFor();
+ const settingsDialog = await page.locator('.cfg-modal').boundingBox();
+ assert(settingsDialog.width <= 521 && settingsDialog.x >= 16, 'Settings dialog must remain compact and inside the viewport');
  assert((await page.getByPlaceholder('Base URL，如 https://onerouter.cmaiot.cn/v1',{exact:true}).inputValue())==='https://fixture.invalid/v1');
  assert((await page.locator('.ai-head').innerText()).includes('未配置 AI 服务'));
  await screenshot('light-ai-settings-retry.png');

@@ -7,7 +7,7 @@ const { draft, show, loaded, revealApiKey, busy, mutating, error, load, setOpen,
 </script>
 <template>
     <!-- 配置弹窗 -->
-    <n-modal :show="show" @update:show="setOpen" :closable="!mutating" :mask-closable="!mutating" :close-on-esc="!mutating" preset="card" class="cfg-modal" title="AI 与知识库配置">
+    <n-modal :show="show" @update:show="setOpen" :closable="!mutating" :mask-closable="!mutating" :close-on-esc="!mutating" preset="card" class="cfg-modal" style="width: min(520px, calc(100vw - 32px))" title="AI 与知识库配置">
       <div class="cfg">
         <n-input :disabled="busy || !loaded" v-model:value="draft.base_url" placeholder="Base URL，如 https://onerouter.cmaiot.cn/v1" />
         <div class="cfg-key-row">
@@ -54,7 +54,6 @@ const { draft, show, loaded, revealApiKey, busy, mutating, error, load, setOpen,
 </template>
 <style scoped>
 .cfg { display: flex; flex-direction: column; gap: 12px; }
-.cfg-modal { width: 520px; }
 .cfg-note { color: var(--text-tertiary); font-size: 13px; }
 .cfg-row { display: flex; gap: 10px; }
 .cfg-row > :first-child { flex: 1; }
