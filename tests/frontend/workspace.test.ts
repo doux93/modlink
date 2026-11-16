@@ -120,6 +120,9 @@ describe("device-bound diagnosis and review", () => {
     (await button("导出报告")).click(); await flushPromises();
     const exported = mocks.invoke.mock.calls.find(([command]) => command === "save_text_file")![1].content;
     expect(exported).toContain("端口：COM_A"); expect(exported).not.toContain("端口：COM_B");
+    serial.activePort = "COM_A"; await flushPromises();
+    expect(wrapper!.find(".result-review").exists()).toBe(true);
+    expect((await button("处理后复测")).disabled).toBe(false);
   });
   it("prefills AI from the result without sending and repeats the same diagnostic on explicit retest", async () => {
     setup(Diagnosis, true); await flushPromises();

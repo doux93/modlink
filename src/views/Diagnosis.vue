@@ -163,7 +163,7 @@ watch(flowId, () => {
 watch(
   () => applicableIds.value,
   (ids) => {
-    if (!ids || running.value) return;
+    if (!ids || running.value || confirming.value || report.value) return;
     if (flowId.value && !ids.has(flowId.value)) {
       flowId.value = ids.has("network_attach") ? "network_attach" : [...ids][0] ?? "";
     }
@@ -205,7 +205,7 @@ const sameTarget = (context: RunContext) => store.activePort === context.target.
   && store.activeProfileId === context.profileId;
 const canReviewCurrent = computed(() => !!runContext.value && sameTarget(runContext.value));
 watch(() => [store.activePort, store.activeSession?.generation, store.activeProfileId], () => {
-  if (!running.value && !confirming.value) { report.value = null; steps.value = []; runContext.value = null; }
+  if (!running.value && !confirming.value && !report.value) { steps.value = []; runContext.value = null; }
 });
 let unlisten: UnlistenFn | null = null;
 let clock = 0;
@@ -300,6 +300,11 @@ function viewEvidence() {
   expanded.value = new Set(report.value?.steps.map((step) => step.id) ?? []);
   document.querySelector(".diag .steps")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
+function newCheck() {
+  report.value = null; steps.value = []; runContext.value = null;
+  const ids = applicableIds.value;
+  if (ids && !ids.has(flowId.value)) flowId.value = ids.has("network_attach") ? "network_attach" : [...ids][0] ?? "";
+}
 function retest() {
   if (!runContext.value || !canReviewCurrent.value || running.value) return;
   flowId.value = runContext.value.flow.id;
@@ -386,27 +391,6 @@ h1{font-size:22px} .meta{color:#666;font-size:13px;margin-bottom:20px}
 pre{background:#f6f8fa;border-radius:6px;padding:8px 10px;font-size:12px;overflow-x:auto;margin-top:8px}
 .collect{border-left:3px solid #f0a020}
 
-.task-path { display: flex; align-items: center; gap: 18px; padding: 16px 18px; margin-bottom: 20px; background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: 10px; color: var(--text-tertiary); font-size: 13px; }
-.task-path span { display: flex; align-items: center; gap: 8px; }
-.task-path i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--surface-hover); font-style: normal; }
-.task-path .current { color: var(--brand-primary); font-weight: 600; }
-.task-path .current i { background: var(--brand-primary-soft); }
-.task-path .done { color: var(--status-success); }
-.task-path > b { font-weight: normal; }
-.run-target { padding: 12px 0; color: var(--text-secondary); font-size: 13px; }
-.target-changed { display: block; margin-top: 8px; color: var(--status-warning); }
-.result-review { border: 1px solid var(--border-default); border-left: 4px solid var(--status-warning); background: var(--surface-raised); border-radius: 10px; padding: 20px; margin: 4px 0 18px; }
-.result-pass { border-left-color: var(--status-success); }
-.result-fail { border-left-color: var(--status-danger); }
-.result-heading { display: flex; align-items: center; gap: 12px; }
-.result-heading h3 { margin: 0 0 4px; font-size: 17px; }
-.result-heading p, .result-next { color: var(--text-secondary); font-size: 13px; }
-.result-next { margin: 14px 0; }
-.result-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.check-plan { border: 1px solid var(--border-subtle); border-radius: 10px; padding: 16px; background: var(--surface-raised); }
-.check-plan summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
-.check-plan[open] summary { margin-bottom: 16px; }
-@media (max-width: 850px) { .task-path { gap: 8px; padding: 12px; font-size: 12px; } }
 </style></head><body>
 <h1>设备诊断报告</h1>
 <div class="meta">工具：ModuLink Studio ｜ 流程：${esc(r.flow_name)} ｜ 端口：${esc(runContext.value?.target.port ?? "-")}
@@ -426,7 +410,7 @@ ${rows}
         <p class="sub">从基础检查定位异常，查看证据，处理后复测。</p>
       </div>
       <div class="controls">
-        <n-select
+        <n-select v-if="!report"
           v-model:value="flowId"
           :disabled="running || confirming"
           :options="flowOptions"
@@ -435,7 +419,8 @@ ${rows}
           style="width: 240px"
           placeholder="选择验证流程"
         />
-        <n-button v-if="!running" type="primary" :disabled="!diagPort || !selectedFlow || confirming" :loading="confirming" @click="start">
+        <n-button v-if="report" secondary @click="newCheck">开始新的检查</n-button>
+        <n-button v-else-if="!running" type="primary" :disabled="!diagPort || !selectedFlow || confirming" :loading="confirming" @click="start">
           开始检查
         </n-button>
         <n-button v-else type="warning" @click="cancel">取消运行</n-button>
@@ -509,7 +494,7 @@ ${rows}
       </div>
     </details>
     <div v-if="diagPort && !selectedFlow && !running && !report" class="empty">当前型号没有可用检查流程，可在知识中心检查资料，或切换设备型号。</div>
-    <div v-if="running || report" class="progress-area">
+    <div v-if="running" class="progress-area">
       <div class="progress-track"><span :style="{ width: `${progress}%` }" /></div>
       <div class="progress-summary">
         <span>{{ steps.length }} / {{ displaySteps.length }}</span>
@@ -567,9 +552,9 @@ h2 { font-size: 18px; }
 .ov-pass { background: var(--status-success-soft); color: var(--status-success); }
 .ov-warn { background: var(--status-warning-soft); color: var(--status-warning); }
 .ov-fail { background: var(--status-danger-soft); color: var(--status-danger); }
-.progress-area { max-width: 780px; margin-bottom: 12px; }
+.progress-area { margin-bottom: 12px; }
 .progress-track { height: 4px; overflow: hidden; background: var(--border-subtle); border-radius: 2px; }
-.progress-track span { display: block; height: 100%; background: var(--status-success); transition: width .2s ease; }
+.progress-track span { display: block; height: 100%; background: var(--brand-primary); transition: width .2s ease; }
 .progress-summary {
   display: flex; flex-wrap: wrap; gap: 6px 16px;
   margin-top: 7px; font-size: 12px; color: var(--text-secondary);
@@ -578,7 +563,7 @@ h2 { font-size: 18px; }
 .sum-warn { color: var(--status-warning); }
 .sum-fail { color: var(--status-danger); }
 
-.steps { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 780px; }
+.steps { display: flex; flex-direction: column; gap: 10px; width: 100%; }
 .step-card {
   border: 1px solid var(--border-default); border-radius: 10px;
   padding: 12px 16px; background: var(--surface-raised);

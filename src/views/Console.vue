@@ -263,7 +263,7 @@ function onKey(e: KeyboardEvent) {
           <span>TX <b>{{ store.txBytes.toLocaleString() }}</b> B</span>
           <span>{{ store.activeFrames.length.toLocaleString() }} 行</span>
           <span v-if="store.activeProfile" class="kb-hint">
-            型号: {{ store.activeProfile.name }}
+            {{ store.activeProfile.id === 'generic' ? '通用指令集' : '型号' }}: {{ store.activeProfile.name }}
           </span>
           <span v-if="store.lastError" class="err">
             <AppIcon :icon="AlertTriangle" :size="13" />

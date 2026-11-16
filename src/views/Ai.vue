@@ -1189,7 +1189,7 @@ const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资�
         <h2>AI 调试助手</h2>
         <p class="sub">
           结合设备证据分析问题 ·
-          <b :class="ruleMode ? 'mode-rule' : 'mode-ai'">{{ ruleMode ? "规则引擎模式（离线）" : "AI 模式" }}</b>
+          <b :class="ruleMode ? 'mode-rule' : settings.base_url ? 'mode-ai' : 'warn'">{{ ruleMode ? "规则引擎模式（离线）" : settings.base_url ? "AI 模式" : "未配置 AI 服务" }}</b>
           <template v-if="connected"> · {{ store.activePort }}</template>
           <template v-else> · <span class="warn">串口未连接，AI 无法替你执行指令</span></template>
         </p>
@@ -1213,7 +1213,7 @@ const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资�
 
     <div class="ai-context" aria-label="本轮分析上下文">
       <span>目标设备 <b>{{ connected ? store.activePort : '未连接，可咨询或分析已有材料' }}</b></span>
-      <span>附带日志 <b>{{ attachedLogCount }} 条</b></span><span>资料 <b>{{ manualLabel }}</b></span>
+      <span>自动附带日志 <b>{{ attachedLogCount }} 条</b></span><span>资料 <b>{{ manualLabel }}</b></span>
       <n-button v-if="!connected" size="small" secondary @click="connectDevice">连接设备</n-button>
       <n-button v-if="!settings.base_url" size="small" secondary @click="showSettings = true">配置 AI 服务</n-button>
       <n-button v-if="connected" size="small" text @click="activeView = 'diag'">返回诊断与复测</n-button>
@@ -1223,7 +1223,7 @@ const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资�
       <div v-if="!ui.length" class="welcome">
         <div class="welcome-head">
           <div class="welcome-eyebrow">AI 助手</div>
-          <p>{{ connected ? "可以分析当前设备的日志，也可以从诊断结果带入异常。建议发送后，你可以逐项确认是否执行。" : "连接设备后可分析现场问题；也可以先描述故障，或粘贴已有日志。可用资料范围显示在上方。" }}</p>
+          <p>{{ connected ? "可以分析当前设备的日志，也可以从诊断结果带入异常。AI 给出的执行建议会先请你确认。" : "连接设备后可分析现场问题；也可以先描述故障，或粘贴已有日志。可用资料范围显示在上方。" }}</p>
         </div>
         <div class="quick-asks">
           <n-button v-for="q in QUICK_ASKS" :key="q" size="small" secondary @click="send(q)">

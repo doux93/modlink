@@ -29,6 +29,11 @@ let browser;
 try { browser = await chromium.launch({channel:'msedge', headless:true}); } catch (error) { server.close(); throw error; }
 const page=await browser.newPage({viewport:{width:1280,height:850}});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
+async function screenshot(name) {
+ await page.locator('.n-message').last().waitFor({state:'hidden'});
+ await page.evaluate(() => document.fonts.ready);
+ await page.screenshot({path:path.join(output,name),animations:'disabled'});
+}
 await page.addInitScript(()=>{
  localStorage.setItem('modulink-onboarding-completed','1');localStorage.setItem('ml.theme','light');
  const callbacks=new Map();let next=1;
@@ -54,27 +59,27 @@ await page.addInitScript(()=>{
 });
 try{
  await page.goto(url);await page.locator('.console').waitFor();
- await page.screenshot({path:output+'/light-console.png'});
+ await screenshot('light-console.png');
  await page.locator('.device-context').getByRole('button',{name:'连接设备',exact:true}).click();
  await page.locator('.connection-dialog').waitFor();
  await page.getByLabel('波特率', {exact:true}).fill('57600');
- await page.screenshot({path:output+'/light-connection.png'});
+ await screenshot('light-connection.png');
  await page.getByRole('button',{name:'连接并识别',exact:true}).click();
  await page.locator('.connection-dialog').waitFor({state:'hidden'});
  assert((await page.locator('.device-context').innerText()).includes('57600'));
  await page.getByRole('link',{name:'设备诊断',exact:true}).click();await page.locator('.diag').waitFor();
- await page.screenshot({path:output+'/light-diagnosis-ready.png'});
+ await screenshot('light-diagnosis-ready.png');
  await page.getByRole('button',{name:'开始检查',exact:true}).click();
  await page.locator('.result-review').waitFor();
- await page.screenshot({path:output+'/light-diagnosis-result.png'});
+ await screenshot('light-diagnosis-result.png');
  await page.getByRole('button',{name:'AI 分析异常',exact:true}).click();await page.locator('.ai').waitFor();
  assert((await page.locator('.ai textarea').first().inputValue()).includes('+CME ERROR: 10'));
- await page.screenshot({path:output+'/light-ai.png'});
+ await screenshot('light-ai.png');
  await page.locator('.sidebar-footer [role=switch]').click();
- await page.screenshot({path:output+'/dark-ai.png'});
+ await screenshot('dark-ai.png');
  await page.getByRole('link',{name:'串口控制台',exact:true}).click();await page.locator('.console').waitFor();
  await page.setViewportSize({width:1028,height:749});
- await page.screenshot({path:output+'/dark-console-compact.png'});
+ await screenshot('dark-console-compact.png');
  assert(await page.evaluate(() => document.querySelector('.shell').scrollWidth <= window.innerWidth), 'Compact shell must not overflow horizontally');
  assert.deepEqual(errors,[]);
  await writeFile(path.join(output,'result.json'), JSON.stringify({passed:true, fixture:true, commit:process.env.GITHUB_SHA, checks:['connection with custom settings', 'diagnostic result', 'AI draft handoff without sending', 'compact layout'], screenshots:7},null,2));
