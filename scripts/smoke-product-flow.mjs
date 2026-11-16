@@ -123,6 +123,7 @@ try{
  await page.getByRole('link',{name:'串口控制台',exact:true}).click();await page.locator('.console').waitFor();
  if(!await page.locator('.quick').isVisible())await page.getByRole('button',{name:'展开快捷指令',exact:true}).click();
  await page.evaluate(()=>{window.__failNextQuickSave=true;});
+ await page.locator('.quick-item').first().hover();
  await page.getByRole('button',{name:'编辑指令',exact:true}).first().click();
  await page.getByPlaceholder('AT 指令或数据',{exact:true}).fill('AT+CGMI');
  await page.locator('.n-modal').getByRole('button',{name:'保存',exact:true}).click();
