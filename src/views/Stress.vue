@@ -1,9 +1,23 @@
 <script setup lang="ts">
+import {
+  NAlert,
+  NButton,
+  NCheckbox,
+  NInput,
+  NInputNumber,
+  NRadioButton,
+  NRadioGroup,
+  NSelect,
+  NTab,
+  NTabs,
+  NTag,
+  useDialog,
+  useMessage,
+} from "naive-ui";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { useDialog, useMessage } from "naive-ui";
 import { Play, Square } from "@lucide/vue";
 import AppIcon from "../components/AppIcon.vue";
 import { useSerialStore } from "../stores/serial";

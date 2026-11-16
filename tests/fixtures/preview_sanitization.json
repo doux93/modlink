@@ -1,0 +1,10 @@
+[
+  {"input":"# AT+CSQ 手册：ML307C 仓库：ml307c 来源：developmentdomain/ml307c/reusable/at.dita 信号质量查询命令","contains":["AT+CSQ","信号质量查询命令"],"excludes":["developmentdomain/","仓库：","来源：",".dita"]},
+  {"input":"手册：ML307C `5glanfunctionusageguide` 类型：guide ` AT+CSQ 参考 `g_ml307c_examples.dita` 信号质量","contains":["AT+CSQ","信号质量"],"excludes":["5glanfunctionusageguide","类型：guide",".dita"]},
+  {"input":"# AT+CGDCONT 设置 PDP 上下文","contains":["# AT+CGDCONT 设置 PDP 上下文"],"excludes":[]},
+  {"input":"AT+CFG=\"ssl\",1\r\n来源：`developmentdomain/topic.dita`\r\n配置参数","contains":["AT+CFG=\"ssl\",1","配置参数"],"excludes":["developmentdomain","来源："]},
+  {"input":"AT+CSQ 信号 - 70 dBm，文档版本 V1.2","contains":["- 70 dBm","V1.2"],"excludes":[]},
+  {"input":"研发中心产品手册发布项目模板 仅供文档工程师使用 AT+CSQ anythingllm_kb/private/file.md 查询信号","contains":["AT+CSQ","查询信号"],"excludes":["anythingllm_kb","private/file","仅供文档工程师使用","研发中心产品手册发布项目模板"]},
+  {"input":"AT+CSQ 参考 manual-guide.dita 参数列表","contains":["AT+CSQ","参数列表"],"excludes":["manual-guide.dita"]},
+  {"input":"","contains":[],"excludes":["anythingllm_kb"]}
+]

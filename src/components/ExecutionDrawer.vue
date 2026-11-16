@@ -1,6 +1,15 @@
 <script setup lang="ts">
+import {
+  NAlert,
+  NButton,
+  NDrawer,
+  NDrawerContent,
+  NTag,
+  NTooltip,
+  useDialog,
+  useMessage,
+} from "naive-ui";
 import { ref, computed, watch } from "vue";
-import { useDialog, useMessage } from "naive-ui";
 import { ChevronDown, ChevronRight } from "@lucide/vue";
 import AppIcon from "./AppIcon.vue";
 import { useExecutionStore } from "../stores/execution";

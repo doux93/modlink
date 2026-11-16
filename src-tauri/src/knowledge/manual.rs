@@ -298,43 +298,7 @@ pub(crate) fn determine_effective_manual_mode(
     }
 }
 
-/// 清除 preview 中可能残留的内部路径引用（DITA 源路径、仓库名等）。
-/// 使用正则替换移除内部标记片段，保留其余摘要文本——避免按行过滤清空整条 preview。
-pub(crate) fn sanitize_preview(preview: &str) -> String {
-    static REMOVE_PATTERNS: std::sync::LazyLock<Vec<regex::Regex>> =
-        std::sync::LazyLock::new(|| {
-            [
-                r"仓库：[^\r\n-]*",
-                r"来源：[^\r\n-]*",
-                r"developmentdomain/\S*",
-                r"手册：[^`]*`[a-z0-9_]+`类型：[^一-鿿`]*`?",
-                r"手册：[^一-鿿]{2,40}类型：[^一-鿿]{2,30}`?",
-                r"仓库：[^一-鿿`]*`[a-z0-9_]+`",
-                r"`[a-z0-9][a-z0-9_]{3,}`",
-                r"`?\w+\.(dita|md)`?",
-                r"类型：[^一-鿿`]{0,30}`?",
-                r"手册：[^一-鿿`]{2,40}",
-                r"-\s+",
-            ]
-            .into_iter()
-            .map(|pattern| regex::Regex::new(pattern).expect("valid preview sanitizing regex"))
-            .collect()
-        });
-    static EXTRA_WHITESPACE: std::sync::LazyLock<regex::Regex> =
-        std::sync::LazyLock::new(|| regex::Regex::new(r"\s{3,}").unwrap());
-
-    let mut s = preview.to_string();
-    for pattern in REMOVE_PATTERNS.iter() {
-        s = pattern.replace_all(&s, "").into_owned();
-    }
-    s = s
-        .replace("anythingllm_kb", "")
-        .replace("研发中心产品手册发布项目模板", "")
-        .replace("仅供文档工程师使用", "")
-        .replace('`', "");
-    s = EXTRA_WHITESPACE.replace_all(&s, " ").into_owned();
-    s.trim().to_string()
-}
+pub(crate) use modulink_core::preview::sanitize_preview;
 
 pub(crate) fn manual_index(paths: &AppPaths, state: &ManualIndex) -> Arc<Vec<TopicMeta>> {
     if let Some(index) = state.0.read().as_ref() {

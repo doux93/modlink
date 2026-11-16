@@ -697,8 +697,15 @@ fn public_index_has_no_internal_paths() {
                 break;
             }
         }
-        if repo_re.is_match(line) || file_re.is_match(line) {
-            leaks += 1;
+        // DITAMAP owner map_id values are stable scope identifiers used for
+        // model applicability, not display text. Check human-readable fields
+        // for source filenames while retaining the metadata/path checks above.
+        let topic: serde_json::Value = serde_json::from_str(line).expect("valid public topic JSON");
+        for key in ["title", "manual", "preview"] {
+            let display = topic[key].as_str().unwrap_or("");
+            if repo_re.is_match(display) || file_re.is_match(display) {
+                leaks += 1;
+            }
         }
     }
     assert_eq!(

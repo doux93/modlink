@@ -26,6 +26,7 @@ pub enum ManualContentLevel {
     /// 只有摘要——涉及参数和完整步骤时须提示核对原手册
     Preview,
     /// 有全文正文——可以表述"根据手册正文"
+    #[serde(rename = "fulltext")]
     FullText,
 }
 

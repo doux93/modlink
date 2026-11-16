@@ -1,16 +1,25 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, watch, onMounted, onUnmounted } from "vue";
+import {
+  NButton,
+  NCheckbox,
+  NDivider,
+  NInput,
+  NModal,
+  NSelect,
+  NTag,
+  NTooltip,
+  useMessage,
+} from "naive-ui";
+import { ref, computed, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { useMessage } from "naive-ui";
-import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { X, Pencil, Trash2, Cable, FileText, AlertTriangle } from "@lucide/vue";
+import { save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { X, Cable, FileText, AlertTriangle } from "@lucide/vue";
 import AppIcon from "../components/AppIcon.vue";
+import QuickCommandPanel from "../components/console/QuickCommandPanel.vue";
+import TerminalLog from "../components/console/TerminalLog.vue";
 import { useSerialStore } from "../stores/serial";
 import { applicableAtCommands } from "../knowledge";
-import { useQuickCommandRunner } from "../composables/useQuickCommandRunner";
-import { useExecutionStore } from "../stores/execution";
 import { useUiPrefs } from "../composables/useUiPrefs";
-import type { Frame, QuickCommand, UrcPattern } from "../types";
 
 const store = useSerialStore();
 const message = useMessage();
@@ -134,17 +143,6 @@ const logFrames = computed(() => {
   return fs.length > 1500 ? fs.slice(-1500) : fs;
 });
 const logAutoScroll = ref(true);
-const logRef = ref<HTMLElement>();
-watch(
-  () => logFrames.value.slice(-1)[0]?.seq,
-  async () => {
-    if (logAutoScroll.value) {
-      await nextTick();
-      logRef.value?.scrollTo({ top: logRef.value.scrollHeight });
-    }
-  }
-);
-
 function clearLogPane() {
   const lp = store.activeDeviceGroup?.logPort;
   if (lp) store.framesByPort[lp] = [];
@@ -168,54 +166,6 @@ async function reloadKb() {
     `知识库已重载：${store.knowledge?.profiles.length ?? 0} 个模组画像，` +
       `${Object.keys(store.knowledge?.error_codes ?? {}).length} 条错误码`
   );
-}
-
-// ---------------- 帧注解（M2：错误码 + URC） ----------------
-interface CompiledUrc extends UrcPattern {
-  re: RegExp;
-}
-const compiledUrcs = computed<CompiledUrc[]>(() =>
-  (store.activeProfile?.urc_patterns ?? []).flatMap((u) => {
-    try {
-      return [{ ...u, re: new RegExp(u.pattern) }];
-    } catch {
-      return [];
-    }
-  })
-);
-
-/** 错误码行内注解: "+CME ERROR: 10" → { note: "SIM 卡未插入", tip: 建议 } */
-function errAnno(f: Frame) {
-  if (f.dir !== "rx") return null;
-  const m = /^\+(CME|CMS) ERROR:\s*(\d+)/.exec(f.text.trim());
-  if (!m || !store.knowledge) return null;
-  const entry = store.activeErrorCodes[`${m[1].toLowerCase()}:${m[2]}`];
-  if (!entry) return null;
-  return {
-    note: entry.meaning,
-    tip: [
-      entry.causes.length ? `可能原因:\n· ${entry.causes.join("\n· ")}` : "",
-      entry.suggestions.length ? `建议:\n· ${entry.suggestions.join("\n· ")}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n\n"),
-  };
-}
-
-/** URC 标签: "+CEREG: 1" → { label: "网络注册", severity: "info" } */
-function urcAnno(f: Frame) {
-  if (f.dir !== "rx" || (f.kind !== "urc" && f.kind !== "response")) return null;
-  for (const u of compiledUrcs.value) {
-    const m = u.re.exec(f.text.trim());
-    if (!m) continue;
-    let severity = u.severity ?? "info";
-    if (u.severity_field && m.groups?.[u.severity_field] !== undefined) {
-      severity =
-        u.severity_map[m.groups[u.severity_field]] ?? u.severity_default ?? severity;
-    }
-    return { label: u.label, severity };
-  }
-  return null;
 }
 
 // ---------------- 布局：可拖动分栏（宽度持久化） ----------------
@@ -245,7 +195,6 @@ function startDrag(which: "quick" | "log", e: MouseEvent) {
 const showTime = ref(true);
 const showHex = ref(false);
 const autoScroll = ref(true);
-const outputRef = ref<HTMLElement>();
 /** 终端字号三档（持久化到 useUiPrefs） */
 const { fontSize } = useUiPrefs();
 const FONT_SIZES = [12, 13, 15];
@@ -256,58 +205,12 @@ function cycleFont() {
 /** 输出区渲染上限：数据保留全量(2万行/口)，DOM 只渲染最近 N 行防卡顿 */
 const RENDER_CAP = 2000;
 
-const displayedFrames = computed(() => {
-  let fs = store.activeFrames;
+const filteredFrames = computed(() => {
   const q = filterText.value.trim().toLowerCase();
-  if (q) fs = fs.filter((f) => (f.hex ?? f.text).toLowerCase().includes(q));
-  return fs.length > RENDER_CAP ? fs.slice(-RENDER_CAP) : fs;
+  return q ? store.activeFrames.filter((f) => (f.hex ?? f.text).toLowerCase().includes(q)) : store.activeFrames;
 });
-const hiddenCount = computed(() => {
-  const q = filterText.value.trim().toLowerCase();
-  const matched = q
-    ? store.activeFrames.filter((f) => (f.hex ?? f.text).toLowerCase().includes(q)).length
-    : store.activeFrames.length;
-  return Math.max(0, matched - RENDER_CAP);
-});
-
-watch(
-  () => store.activeFrames.slice(-1)[0]?.seq,
-  async () => {
-    if (autoScroll.value) {
-      await nextTick();
-      outputRef.value?.scrollTo({ top: outputRef.value.scrollHeight });
-    }
-  }
-);
-
-function fmtTime(ts: number) {
-  const d = new Date(ts);
-  return (
-    d.toLocaleTimeString("zh-CN", { hour12: false }) +
-    "." +
-    String(d.getMilliseconds()).padStart(3, "0")
-  );
-}
-
-function toHex(s: string) {
-  return Array.from(new TextEncoder().encode(s))
-    .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
-    .join(" ");
-}
-
-function frameClass(f: Frame) {
-  if (f.dir === "tx") return "ln-tx";
-  switch (f.kind) {
-    case "final":
-      return f.text.includes("ERROR") ? "ln-error" : "ln-ok";
-    case "urc":
-      return "ln-urc";
-    case "echo":
-      return "ln-echo";
-    default:
-      return "ln-rx";
-  }
-}
+const displayedFrames = computed(() => filteredFrames.value.slice(-RENDER_CAP));
+const hiddenCount = computed(() => Math.max(0, filteredFrames.value.length - RENDER_CAP));
 
 async function saveLog() {
   const path = await saveDialog({
@@ -376,168 +279,6 @@ function onKey(e: KeyboardEvent) {
   }
 }
 
-// ---------------- 快捷指令 ----------------
-const activeGroup = ref(0);
-const executions = useExecutionStore();
-const quickRunner = useQuickCommandRunner({
-  execute: (target, steps, id) => store.executeAtSequence(target, steps, "quick_command", "stop_on_error", undefined, id),
-  write: (target, command) => store.writeTo(target, command.text, command.format === "hex", command.append_newline, "quick_command"),
-  stop: async (id) => {
-    try { return await executions.stop(id); }
-    catch (error) { message.error(`停止任务失败：${error}`); }
-  },
-});
-const { looping, runningTarget } = quickRunner;
-watch(() => executions.records.filter((record) => record.status === "running").map((record) => record.executionId),
-  (ids) => ids.forEach(quickRunner.onExecutionStarted));
-onUnmounted(() => { void quickRunner.stop(); });
-
-// ---- 编辑（增删改 + 分组管理，全部自动持久化） ----
-const showEdit = ref(false);
-const editIdx = ref(-1); // -1 = 新增
-const editDraft = ref<QuickCommand>(blankCmd());
-
-function blankCmd(): QuickCommand {
-  return { text: "", format: "text", append_newline: true, selected: false, note: "" };
-}
-
-function ensureQuickCmds() {
-  if (!store.quickCmds) {
-    store.quickCmds = {
-      schema: "modulink/quickcmds@1",
-      name: "我的指令集",
-      groups: [{ name: "默认分组", items: [] }],
-      loop: { times: 1, interval_ms: 300 },
-      warnings: [],
-    };
-  }
-}
-
-function openEdit(idx: number) {
-  ensureQuickCmds();
-  editIdx.value = idx;
-  editDraft.value =
-    idx >= 0
-      ? { ...store.quickCmds!.groups[activeGroup.value].items[idx] }
-      : blankCmd();
-  showEdit.value = true;
-}
-
-function saveEdit() {
-  if (!editDraft.value.text.trim()) {
-    message.warning("指令内容不能为空");
-    return;
-  }
-  const items = store.quickCmds!.groups[activeGroup.value].items;
-  if (editIdx.value >= 0) {
-    items[editIdx.value] = { ...editDraft.value };
-  } else {
-    items.push({ ...editDraft.value });
-  }
-  showEdit.value = false;
-  store.persistQuickCmds();
-}
-
-function removeCmd(idx: number) {
-  store.quickCmds!.groups[activeGroup.value].items.splice(idx, 1);
-  store.persistQuickCmds();
-}
-
-function moveCmd(idx: number, delta: number) {
-  const items = store.quickCmds!.groups[activeGroup.value].items;
-  const to = idx + delta;
-  if (to < 0 || to >= items.length) return;
-  [items[idx], items[to]] = [items[to], items[idx]];
-  store.persistQuickCmds();
-}
-
-// ---- 分组管理 ----
-const showGroupEdit = ref(false);
-const groupNameDraft = ref("");
-
-function addGroup() {
-  ensureQuickCmds();
-  store.quickCmds!.groups.push({ name: `分组 ${store.quickCmds!.groups.length + 1}`, items: [] });
-  activeGroup.value = store.quickCmds!.groups.length - 1;
-  store.persistQuickCmds();
-}
-
-function openGroupRename() {
-  groupNameDraft.value = store.quickCmds!.groups[activeGroup.value].name;
-  showGroupEdit.value = true;
-}
-
-function saveGroupRename() {
-  if (groupNameDraft.value.trim()) {
-    store.quickCmds!.groups[activeGroup.value].name = groupNameDraft.value.trim();
-    store.persistQuickCmds();
-  }
-  showGroupEdit.value = false;
-}
-
-function removeGroup() {
-  store.quickCmds!.groups.splice(activeGroup.value, 1);
-  if (!store.quickCmds!.groups.length) {
-    store.quickCmds!.groups.push({ name: "默认分组", items: [] });
-  }
-  activeGroup.value = Math.max(0, activeGroup.value - 1);
-  store.persistQuickCmds();
-}
-
-async function importIni() {
-  const path = await openDialog({
-    filters: [{ name: "老工具配置", extensions: ["ini"] }],
-  });
-  if (!path) return;
-  try {
-    await store.importLegacy(path as string);
-    activeGroup.value = 0;
-    const f = store.quickCmds!;
-    const total = f.groups.reduce((n, g) => n + g.items.length, 0);
-    message.success(`导入成功：${f.groups.length} 组 / ${total} 条指令`);
-    for (const w of f.warnings) message.warning(w);
-  } catch (e) {
-    message.error(String(e));
-  }
-}
-
-async function exportIni() {
-  if (!store.quickCmds) return;
-  const path = await saveDialog({
-    defaultPath: `${store.quickCmds.name}_导出.ini`,
-    filters: [{ name: "老工具配置", extensions: ["ini"] }],
-  });
-  if (!path) return;
-  await store.exportLegacy(path as string);
-  message.success("已导出为老工具 ini 格式");
-}
-
-async function sendQuick(c: QuickCommand) {
-  if (!connected.value) {
-    message.warning("请先连接串口");
-    return;
-  }
-  await store.write(c.text, c.format === "hex", c.append_newline, "quick_command");
-}
-
-async function sendSelected(loop: boolean) {
-  const f = store.quickCmds;
-  if (!f || !connected.value) return;
-  const items = f.groups[activeGroup.value]?.items.filter((i) => i.selected).map((item) => ({ ...item })) ?? [];
-  if (!items.length) {
-    message.warning("当前分组没有勾选的指令");
-    return;
-  }
-  try {
-    const target = store.executionTarget(store.activePort);
-    const times = loop ? f.loop.times : 1;
-    const interval = f.loop.interval_ms;
-    await executions.init();
-    await quickRunner.run(target, items, times, interval);
-  } catch (error) {
-    message.error(`批量发送已停止：${error}`);
-  }
-}
 </script>
 
 <template>
@@ -639,38 +380,18 @@ async function sendSelected(loop: boolean) {
     <div class="body">
       <!-- 输出 + 输入 -->
       <section class="io">
-        <div ref="outputRef" class="output" :style="{ fontSize: fontSize + 'px' }">
-          <div v-if="hiddenCount > 0" class="cap-hint">
-            ↑ 还有 {{ hiddenCount.toLocaleString() }} 行未显示（数据已保留，可用过滤或保存日志查看全部）
-          </div>
-          <div v-for="f in displayedFrames" :key="f.seq" class="line" :class="frameClass(f)">
-            <span v-if="showTime" class="ts">{{ fmtTime(f.ts) }}</span>
-            <span class="dir">{{ f.dir === "tx" ? "»" : "«" }}</span>
-            <span class="txt">{{ showHex && !f.hex ? toHex(f.text) : (f.hex ?? f.text) }}</span>
-            <!-- URC 标签 -->
-            <span
-              v-if="urcAnno(f)"
-              class="chip"
-              :class="`sev-${urcAnno(f)!.severity}`"
-            >{{ urcAnno(f)!.label }}</span>
-            <!-- 错误码行内解读（知识库驱动） -->
-            <n-tooltip v-if="errAnno(f)" trigger="hover" placement="top-start" style="max-width: 380px">
-              <template #trigger>
-                <span class="anno">ⓘ {{ errAnno(f)!.note }}</span>
-              </template>
-              <div style="white-space: pre-wrap">{{ errAnno(f)!.tip }}</div>
-            </n-tooltip>
-          </div>
-          <div v-if="!displayedFrames.length" class="placeholder">
-            {{
-              filterText
-                ? "没有匹配过滤条件的行"
-                : store.sessions.length
-                  ? "等待数据…"
-                  : "选择串口并点击「打开会话」开始（可同时打开多个）"
-            }}
-          </div>
-        </div>
+        <TerminalLog
+          :frames="displayedFrames"
+          :source-key="`${store.activePort}:${store.activeSession?.generation ?? 0}`"
+          :hidden-count="hiddenCount"
+          :font-size="fontSize"
+          :show-time="showTime"
+          :show-hex="showHex"
+          :auto-scroll="autoScroll"
+          :error-codes="store.activeErrorCodes"
+          :urc-patterns="store.activeProfile?.urc_patterns ?? []"
+          :empty-message="filterText ? '没有匹配过滤条件的行' : store.sessions.length ? '等待数据…' : '选择串口并点击「打开会话」开始（可同时打开多个）'"
+        />
         <div class="statusbar">
           <span>RX <b>{{ store.rxBytes.toLocaleString() }}</b> B</span>
           <span>TX <b>{{ store.txBytes.toLocaleString() }}</b> B</span>
@@ -729,151 +450,22 @@ async function sendSelected(loop: boolean) {
             <n-button size="tiny" quaternary @click="clearLogPane">清屏</n-button>
           </div>
         </div>
-        <div ref="logRef" class="logpane-body">
-          <div v-for="f in logFrames" :key="f.seq" class="log-line">
-            <span class="ts">{{ fmtTime(f.ts) }}</span>
-            <span>{{ f.text }}</span>
-          </div>
-          <div v-if="!logFrames.length" class="placeholder">等待日志口数据…</div>
-        </div>
+        <TerminalLog
+          :frames="logFrames"
+          :source-key="store.activeDeviceGroup.logPort"
+          :auto-scroll="logAutoScroll"
+          :font-size="12"
+          plain
+          empty-message="等待日志口数据…"
+        />
       </section>
 
       <!-- 快捷指令面板（宽度可拖） -->
       <div class="splitter" @mousedown="startDrag('quick', $event)" />
-      <aside class="quick" :style="{ width: quickW + 'px' }">
-        <div class="quick-head">
-          <b>快捷指令</b>
-          <div>
-            <n-button size="tiny" quaternary @click="importIni">导入老 ini</n-button>
-            <n-button size="tiny" quaternary :disabled="!store.quickCmds" @click="exportIni">
-              导出
-            </n-button>
-          </div>
-        </div>
-        <template v-if="store.quickCmds">
-          <div class="group-bar">
-            <n-tabs v-model:value="activeGroup" type="line" size="small" class="tabs-flex">
-              <n-tab v-for="(g, i) in store.quickCmds.groups" :key="i" :name="i">
-                {{ g.name }}
-              </n-tab>
-            </n-tabs>
-            <n-dropdown
-              trigger="click"
-              :options="[
-                { label: '新建分组', key: 'add' },
-                { label: '重命名当前分组', key: 'rename' },
-                { label: '删除当前分组', key: 'remove' },
-              ]"
-              @select="(k: string) => (k === 'add' ? addGroup() : k === 'rename' ? openGroupRename() : removeGroup())"
-            >
-              <n-button size="tiny" quaternary>⋯</n-button>
-            </n-dropdown>
-          </div>
-          <div class="quick-list">
-            <div
-              v-for="(c, i) in store.quickCmds.groups[activeGroup]?.items"
-              :key="i"
-              class="quick-item"
-            >
-              <n-checkbox v-model:checked="c.selected" size="small" @update:checked="store.persistQuickCmds()" />
-              <span class="quick-text" :title="c.note ? `${c.note}\n${c.text}` : c.text" @dblclick="openEdit(i)">
-                <n-tag v-if="c.format === 'hex'" size="tiny" type="warning" :bordered="false">
-                  HEX
-                </n-tag>
-                {{ c.note || c.text }}
-              </span>
-              <span class="item-ops">
-                <n-button size="tiny" quaternary @click="moveCmd(i, -1)">↑</n-button>
-                <n-button size="tiny" quaternary @click="moveCmd(i, 1)">↓</n-button>
-                <n-button size="tiny" quaternary @click="openEdit(i)">
-                  <AppIcon :icon="Pencil" :size="13" />
-                </n-button>
-                <n-popconfirm @positive-click="removeCmd(i)">
-                  <template #trigger>
-                    <n-button size="tiny" quaternary>
-                      <AppIcon :icon="Trash2" :size="13" />
-                    </n-button>
-                  </template>
-                  删除这条指令？
-                </n-popconfirm>
-              </span>
-              <n-button size="tiny" secondary type="primary" @click="sendQuick(c)">发送</n-button>
-            </div>
-            <n-button size="tiny" dashed block class="mt-6" @click="openEdit(-1)">
-              ＋ 新增指令
-            </n-button>
-          </div>
-          <div class="quick-foot">
-            <span class="loop-cfg">
-              循环
-              <n-input-number
-                v-model:value="store.quickCmds.loop.times"
-                size="tiny"
-                :min="1"
-                style="width: 80px"
-                @update:value="store.persistQuickCmds()"
-              />
-              次 / 间隔
-              <n-input-number
-                v-model:value="store.quickCmds.loop.interval_ms"
-                size="tiny"
-                :min="0"
-                :step="100"
-                style="width: 90px"
-                @update:value="store.persistQuickCmds()"
-              />
-              ms
-            </span>
-            <span v-if="runningTarget" class="kb-hint">执行目标：{{ runningTarget.port }}</span>
-            <n-button v-if="!looping" size="tiny" type="primary" @click="sendSelected(true)">
-              发送选中
-            </n-button>
-            <n-button v-else size="tiny" type="error" @click="quickRunner.stop()">停止</n-button>
-          </div>
-        </template>
-        <div v-else class="quick-empty">
-          <p>还没有快捷指令</p>
-          <n-button size="small" type="primary" ghost @click="importIni">
-            导入 UART_V2.1 的 ini 配置
-          </n-button>
-          <n-button size="small" quaternary @click="openEdit(-1)">或手动新建一条</n-button>
-          <small>零成本迁移：老工具的按钮布局、分组、勾选状态全部保留</small>
-        </div>
-      </aside>
+      <QuickCommandPanel :style="{ width: quickW + 'px' }" />
     </div>
 
-    <!-- 指令编辑弹窗 -->
-    <n-modal v-model:show="showEdit" preset="card" style="width: 520px"
-      :title="editIdx >= 0 ? '编辑指令' : '新增指令'">
-      <div class="edit-form">
-        <n-input
-          v-model:value="editDraft.text"
-          type="textarea"
-          :rows="3"
-          :placeholder="editDraft.format === 'hex' ? 'Hex 数据，如 1A 2B 3C' : 'AT 指令或数据'"
-        />
-        <n-input v-model:value="editDraft.note" placeholder="备注（可选，显示为按钮名称）" />
-        <div class="edit-row">
-          <n-checkbox :checked="editDraft.format === 'hex'"
-            @update:checked="(v: boolean) => (editDraft.format = v ? 'hex' : 'text')">
-            Hex 发送
-          </n-checkbox>
-          <n-checkbox v-model:checked="editDraft.append_newline">追加回车换行</n-checkbox>
-          <span class="edit-delay">
-            延时
-            <n-input-number v-model:value="editDraft.delay_ms" size="small" :min="0" :step="100"
-              style="width: 110px" placeholder="默认" clearable />
-            ms
-          </span>
-        </div>
-      </div>
-      <template #footer>
-        <div class="modal-actions">
-          <n-button @click="showEdit = false">取消</n-button>
-          <n-button type="primary" @click="saveEdit">保存</n-button>
-        </div>
-      </template>
-    </n-modal>
+
 
     <!-- 新建设备组弹窗 -->
     <n-modal v-model:show="showGroupModal" preset="card" style="width: 480px" title="新建设备组（AT 口 + 日志口）">
@@ -905,16 +497,7 @@ async function sendSelected(loop: boolean) {
       </template>
     </n-modal>
 
-    <!-- 分组重命名弹窗 -->
-    <n-modal v-model:show="showGroupEdit" preset="card" style="width: 380px" title="重命名分组">
-      <n-input v-model:value="groupNameDraft" @keydown.enter="saveGroupRename" />
-      <template #footer>
-        <div class="modal-actions">
-          <n-button @click="showGroupEdit = false">取消</n-button>
-          <n-button type="primary" @click="saveGroupRename">保存</n-button>
-        </div>
-      </template>
-    </n-modal>
+
   </div>
 </template>
 
@@ -955,33 +538,6 @@ async function sendSelected(loop: boolean) {
 .body { flex: 1; display: flex; min-height: 0; }
 .io { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 10px 12px; gap: 8px; }
 
-/* 终端始终深色（行业惯例） */
-.output {
-  flex: 1; overflow-y: auto; border-radius: 8px; padding: 10px 12px;
-  background: var(--surface-terminal); color: var(--term-rx);
-  font-family: Consolas, "Cascadia Mono", monospace;
-  font-size: 13px; line-height: 1.55;
-}
-.line { display: flex; gap: 8px; white-space: pre-wrap; word-break: break-all; align-items: baseline; }
-.ts { color: var(--term-muted); flex-shrink: 0; }
-.dir { flex-shrink: 0; opacity: 0.7; }
-.ln-tx .txt { color: var(--term-tx); }
-.ln-rx .txt, .ln-echo .txt { color: var(--term-rx); }
-.ln-ok .txt { color: var(--term-ok); font-weight: 600; }
-.ln-error .txt { color: var(--term-error); font-weight: 600; }
-.ln-urc .txt { color: var(--term-urc); }
-.placeholder { color: var(--term-muted); padding: 20px; text-align: center; }
-
-.chip {
-  flex-shrink: 0; font-size: 11px; padding: 0 7px; border-radius: 8px; line-height: 17px;
-}
-.sev-info { background: rgba(45, 189, 120, 0.18); color: var(--term-ok); }
-.sev-warning { background: rgba(224, 167, 59, 0.18); color: var(--term-urc); }
-.sev-error { background: rgba(217, 83, 79, 0.18); color: var(--term-error); }
-
-.anno { color: var(--term-anno); font-size: 12px; cursor: help; flex-shrink: 0; }
-.anno:hover { color: var(--term-echo); }
-
 .statusbar {
   display: flex; flex-wrap: wrap; gap: 4px 18px;
   font-size: 12px; color: var(--text-tertiary); padding: 0 4px;
@@ -1015,9 +571,6 @@ async function sendSelected(loop: boolean) {
 }
 .splitter:hover, .splitter:active { background: var(--brand-primary); }
 
-.cap-hint {
-  color: var(--status-warning); font-size: 12px; padding-bottom: 6px;
-}
 
 .logpane {
   min-width: 220px; flex-shrink: 0; display: flex; flex-direction: column;
@@ -1029,57 +582,9 @@ async function sendSelected(loop: boolean) {
 }
 .logpane-head b { display: inline-flex; align-items: center; gap: 6px; }
 .logpane-ops { display: flex; align-items: center; gap: 6px; }
-.logpane-body {
-  flex: 1; overflow-y: auto; border-radius: 8px; padding: 10px 12px;
-  background: var(--surface-terminal-alt); color: var(--term-muted);
-  font-family: Consolas, "Cascadia Mono", monospace;
-  font-size: 12px; line-height: 1.5;
-}
-.log-line { display: flex; gap: 8px; white-space: pre-wrap; word-break: break-all; }
-
-.quick {
-  min-width: 220px; flex-shrink: 0;
-  display: flex; flex-direction: column; padding: 10px 10px 10px 4px;
-}
-.quick-head {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 2px 2px 8px; color: var(--text-primary);
-}
-.quick-list { flex: 1; overflow-y: auto; margin-top: 6px; }
-.group-bar { display: flex; align-items: center; gap: 4px; }
-.quick-item {
-  display: flex; align-items: center; gap: 7px;
-  padding: 5px 4px; border-radius: 6px;
-  color: var(--text-primary);
-}
-.quick-item:hover { background: var(--surface-hover); }
-.item-ops { display: none; flex-shrink: 0; }
-.quick-item:hover .item-ops { display: inline-flex; }
 .edit-form { display: flex; flex-direction: column; gap: 12px; }
-.edit-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.edit-delay { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-.quick-text {
-  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: Consolas, monospace; font-size: 12.5px;
-  color: var(--text-primary);
-}
-.quick-foot {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 8px;
-  border-top: 1px solid var(--border-subtle);
-}
-.loop-cfg {
-  display: flex; flex: 1 1 250px; flex-wrap: wrap; align-items: center; gap: 4px;
-  font-size: 12px; color: var(--text-secondary);
-}
-.quick-empty {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; color: var(--text-secondary); text-align: center; padding: 0 16px;
-}
-.quick-empty small { color: var(--text-tertiary); line-height: 1.5; }
 
 /* === 工具类（替代 inline style） === */
-.tabs-flex { flex: 1; min-width: 0; }
-.mt-6 { margin-top: 6px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .field-row { display: flex; align-items: center; gap: 8px; }
 .field-row > .lbl { width: 46px; }

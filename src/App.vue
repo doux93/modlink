@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch } from "vue";
 import {
+  NButton,
+  NConfigProvider,
+  NDialogProvider,
+  NMessageProvider,
+  NSwitch,
   darkTheme,
   zhCN,
   dateZhCN,
   type GlobalTheme,
 } from "naive-ui";
+import { computed, defineAsyncComponent, ref, watch } from "vue";
 import {
   Terminal,
   FlaskConical,
@@ -18,7 +23,6 @@ import {
   Moon,
   CircleHelp,
 } from "@lucide/vue";
-import ExecutionDrawer from "./components/ExecutionDrawer.vue";
 import DeviceContextBar from "./components/DeviceContextBar.vue";
 import AppIcon from "./components/AppIcon.vue";
 import BrandMark from "./components/BrandMark.vue";
@@ -37,7 +41,10 @@ applyInitialTheme();
 void executionStore.init();
 void serialStore.init();
 
+const ExecutionDrawer = defineAsyncComponent(() => import("./components/ExecutionDrawer.vue"));
 const showExecutionHistory = ref(false);
+const historyLoaded = ref(false);
+watch(showExecutionHistory, (show) => { if (show) historyLoaded.value = true; });
 function closeDrawer() {
   showExecutionHistory.value = false;
 }
@@ -173,7 +180,7 @@ watch(
               </KeepAlive>
             </div>
           </main>
-          <ExecutionDrawer v-model:show="showExecutionHistory" @navigate="onNavigate" />
+          <ExecutionDrawer v-if="historyLoaded" v-model:show="showExecutionHistory" @navigate="onNavigate" />
         </div>
         <WelcomeOverlay v-if="showWelcome" />
       </n-dialog-provider>

@@ -1,7 +1,16 @@
 <script setup lang="ts">
+import {
+  NButton,
+  NCheckbox,
+  NDrawer,
+  NDrawerContent,
+  NInput,
+  NInputNumber,
+  NSelect,
+  useMessage,
+} from "naive-ui";
 import { computed, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { useMessage } from "naive-ui";
 import { X } from "@lucide/vue";
 import AppIcon from "../components/AppIcon.vue";
 import { useSerialStore } from "../stores/serial";

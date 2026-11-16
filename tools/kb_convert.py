@@ -82,33 +82,18 @@ def topic_id_for(rel_path: str, title: str) -> str:
     return hashlib.sha1(rel_path.encode("utf-8")).hexdigest()[:16]
 
 def sanitize_preview(preview: str) -> str:
-    """移除 preview 中的内部路径、来源标记、仓库标识和元数据块，保留可对外交付的摘要内容。"""
-    s = preview
-    s = re.sub(r"仓库：[^\n-]*", "", s)
-    s = re.sub(r"来源：[^\n-]*", "", s)
-    s = re.sub(r"developmentdomain/\S*", "", s)
-    s = s.replace("anythingllm_kb", "")
-    # 移除内部文档模板元语句
-    s = re.sub(r"研发中心产品手册发布项目模板", "", s)
-    s = re.sub(r"仅供文档工程师使用", "", s)
-    # 移除残留的元数据片段（手册+类型块、仓库+反引号标识）
-    s = re.sub(r"手册：[^`]*`[a-z0-9_]+`类型：[^一-鿿`]*`?", "", s)
-    s = re.sub(r"手册：[^一-鿿]{2,40}类型：[^一-鿿]{2,30}`?", "", s)
-    s = re.sub(r"仓库：[^一-鿿`]*`[a-z0-9_]+`", "", s)
-    # 移除独立的反引号仓库标识（如 `5glanfunctionusageguide`）
-    s = re.sub(r"`[a-z0-9][a-z0-9_]{3,}`", "", s)
-    # 移除残留的 .dita / .md 文件名引用
-    s = re.sub(r"`?\w+\.(dita|md)`?", "", s)
-    # 移除残留的"类型：xxx"元数据
-    s = re.sub(r"类型：[^一-鿿`]{0,30}`?", "", s)
-    # 移除残留的"手册：xxx"元数据头
-    s = re.sub(r"手册：[^一-鿿`]{2,40}", "", s)
-    # 清理孤立反引号
-    s = s.replace("`", "")
-    s = re.sub(r"-\s+", "", s)
-    s = re.sub(r"\s{3,}", " ", s)
-    return s.strip()
-
+    """移除元数据 token，保留同一行后面的摘要；与 Rust 共用回归用例。"""
+    patterns = [
+        r"(?:仓库|来源|类型|手册)[：:]\s*(?:`[^`\r\n]*`|[^\s`]+)",
+        r"(?:developmentdomain|anythingllm_kb)/[^\s`]*",
+        r"`[a-z0-9][a-z0-9_]{3,}`",
+        r"`?(?:[\w.-]+[/\\])*[\w.-]+\.(?:ditamap|dita|md)\b`?",
+    ]
+    for pattern in patterns:
+        preview = re.sub(pattern, "", preview)
+    for marker in ["anythingllm_kb", "研发中心产品手册发布项目模板", "仅供文档工程师使用", "`"]:
+        preview = preview.replace(marker, "")
+    return re.sub(r"\s{3,}", " ", preview).strip()
 
 
 MODEL_CODE_RE = re.compile(

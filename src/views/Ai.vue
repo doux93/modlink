@@ -1,15 +1,25 @@
 <script setup lang="ts">
+import {
+  NButton,
+  NInput,
+  NInputNumber,
+  NModal,
+  NPopconfirm,
+  useDialog,
+  useMessage,
+} from "naive-ui";
 import { ref, computed, nextTick, onMounted, onActivated, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { useDialog, useMessage } from "naive-ui";
-import { AlertTriangle, RefreshCw, Settings, ListChecks, FlaskConical } from "@lucide/vue";
+import { RefreshCw, Settings } from "@lucide/vue";
 import AppIcon from "../components/AppIcon.vue";
+import AiToolCard from "../components/ai/AiToolCard.vue";
 import { useSerialStore } from "../stores/serial";
 import { useExecutionStore } from "../stores/execution";
 import { applicableAtCommands } from "../knowledge";
 import { usePendingTools } from "../composables/usePendingTools";
 import { useAiRequestGate, AiRequestTimeoutError, isRequestCancelled, type AiRequestContext } from "../composables/useAiRequestGate";
 import { deviceContextKey } from "../utils/deviceContext";
+import type { AiExecutionTarget, UiItem } from "../types/ai";
 import { splitAtArguments } from "../utils/atArgs";
 import type {
   AtCommandDoc,
@@ -91,38 +101,6 @@ async function clearApiKey() {
 }
 
 // ---------------- 会话模型 ----------------
-interface ProposeStep {
-  cmd: string;
-  expect?: string;
-  delay_ms?: number;
-  risk?: string;
-  checked: boolean;
-}
-interface AiExecutionTarget extends ExecutionTarget {
-  profileId: string;
-}
-interface UiItem {
-  kind: "user" | "assistant" | "note" | "card" | "diagnostic";
-  text?: string;
-  card?: {
-    toolCallId: string;
-    purpose: string;
-    steps: ProposeStep[];
-    status: "pending" | "running" | "done" | "cancelled" | "failed";
-    results: string[];
-    source: "llm" | "rule";
-    target?: AiExecutionTarget;
-  };
-  diagnostic?: {
-    toolCallId: string;
-    flowId: string;
-    purpose: string;
-    status: "pending" | "running" | "done" | "cancelled" | "failed";
-    result: string;
-    details: string[];
-    target?: AiExecutionTarget;
-  };
-}
 
 const ui = ref<UiItem[]>([]);
 const llmMessages = ref<any[]>([]); // OpenAI messages（不含 system，system 每次现算）
@@ -1242,75 +1220,15 @@ const connected = computed(() => store.activeSession?.connected ?? false);
         <div v-else-if="item.kind === 'assistant'" class="msg assistant">{{ item.text }}</div>
         <div v-else-if="item.kind === 'note'" class="msg note">{{ item.text }}</div>
 
-        <!-- AT 序列确认卡 -->
-        <div v-else-if="item.kind === 'card'" class="card" :class="`card-${item.card!.status}`">
-          <div class="card-head">
-            <b>
-              <AppIcon :icon="ListChecks" :size="14" />
-              <span class="gap-4">AT 指令序列</span>
-            </b>
-            <span class="card-purpose">{{ item.card!.purpose }}</span>
-            <n-tag v-if="item.card!.target" size="tiny" :bordered="false">{{ item.card!.target!.port }}</n-tag>
-            <n-tag v-if="item.card!.status === 'cancelled'" size="tiny" :bordered="false">已取消</n-tag>
-            <n-tag v-else-if="item.card!.status === 'failed'" size="tiny" type="error" :bordered="false">执行失败</n-tag>
-            <n-tag v-else-if="item.card!.status === 'done'" size="tiny" type="success" :bordered="false">已执行</n-tag>
-          </div>
-          <div v-for="(s, si) in item.card!.steps" :key="si" class="card-step">
-            <n-checkbox v-model:checked="s.checked" size="small" :disabled="item.card!.status !== 'pending'" />
-            <code>{{ s.cmd }}</code>
-            <n-tag v-if="s.risk && s.risk !== 'none'" size="tiny" type="error" :bordered="false">
-              <span class="btn-label-row">
-                <AppIcon :icon="AlertTriangle" :size="11" />
-                <span class="gap-3">高危: {{ s.risk }}</span>
-              </span>
-            </n-tag>
-          </div>
-          <div v-if="item.card!.results.length" class="card-results">
-            <div v-for="(r, ri) in item.card!.results" :key="ri" class="card-result">{{ r }}</div>
-          </div>
-          <div v-if="item.card!.status === 'pending'" class="card-actions">
-            <n-button size="small" type="primary" :disabled="busy || !targetAvailable(item.card!.target)" @click="executeCard(item)">
-              执行选中指令
-            </n-button>
-            <n-button size="small" :disabled="busy" @click="cancelCard(item)">取消</n-button>
-            <small v-if="!targetAvailable(item.card!.target)" class="warn">目标会话已失效，请重新生成</small>
-          </div>
-        </div>
-
-        <!-- 测试用例确认卡 -->
-        <div
-          v-else-if="item.kind === 'diagnostic'"
-          class="card"
-          :class="`card-${item.diagnostic!.status}`"
-        >
-          <div class="card-head">
-            <b>
-              <AppIcon :icon="FlaskConical" :size="14" />
-              <span class="gap-4">测试用例</span>
-            </b>
-            <span class="card-purpose">{{ item.diagnostic!.purpose }}</span>
-            <n-tag v-if="item.diagnostic!.target" size="tiny" :bordered="false">{{ item.diagnostic!.target!.port }}</n-tag>
-            <n-tag v-if="item.diagnostic!.status === 'cancelled'" size="tiny" :bordered="false">已取消</n-tag>
-            <n-tag v-else-if="item.diagnostic!.status === 'failed'" size="tiny" type="error" :bordered="false">未通过</n-tag>
-            <n-tag v-else-if="item.diagnostic!.status === 'done'" size="tiny" type="success" :bordered="false">
-              已完成
-            </n-tag>
-          </div>
-          <div class="card-step">
-            <code>{{ item.diagnostic!.flowId }}</code>
-          </div>
-          <div v-if="item.diagnostic!.details.length" class="card-results">
-            <div class="card-result">overall: {{ item.diagnostic!.result }}</div>
-            <div v-for="(r, ri) in item.diagnostic!.details" :key="ri" class="card-result">{{ r }}</div>
-          </div>
-          <div v-if="item.diagnostic!.status === 'pending'" class="card-actions">
-            <n-button size="small" type="primary" :disabled="busy || !targetAvailable(item.diagnostic!.target)" @click="executeDiagnostic(item)">
-              运行体检
-            </n-button>
-            <n-button size="small" :disabled="busy" @click="cancelDiagnostic(item)">取消</n-button>
-            <small v-if="!targetAvailable(item.diagnostic!.target)" class="warn">目标会话已失效，请重新生成</small>
-          </div>
-        </div>
+        <AiToolCard
+          v-else-if="item.kind === 'card' || item.kind === 'diagnostic'"
+          :item="item"
+          :busy="busy"
+          :target-available="targetAvailable(item.card?.target ?? item.diagnostic?.target)"
+          @execute="item.kind === 'card' ? executeCard(item) : executeDiagnostic(item)"
+          @cancel="item.kind === 'card' ? cancelCard(item) : cancelDiagnostic(item)"
+          @toggle-step="(index, checked) => { if (item.card?.status === 'pending' && !busy) item.card.steps[index].checked = checked; }"
+        />
       </template>
 
       <div v-if="requestInFlight" class="msg note request-status">
@@ -1403,40 +1321,17 @@ h2 { font-size: 18px; color: var(--text-primary); }
 .msg.note { align-self: center; font-size: 12px; color: var(--text-tertiary); padding: 2px 10px; }
 .request-status { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); }
 
-.card {
-  align-self: flex-start; border: 1px solid var(--brand-primary); border-radius: 12px;
-  padding: 12px 16px; min-width: 0; max-width: 85%;
-  background: var(--surface-raised);
-}
-.card-cancelled { opacity: 0.55; }
-.card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
-.card-head b { display: inline-flex; align-items: center; color: var(--text-primary); }
-.card-purpose { color: var(--text-secondary); font-size: 13px; }
-.card-step { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 3px 0; }
-.card-step code {
-  font-family: Consolas, monospace; font-size: 13px; background: var(--surface-base);
-  padding: 2px 8px; border-radius: 5px; max-width: 100%; overflow-wrap: anywhere;
-  color: var(--text-primary);
-}
-.card-results { margin-top: 8px; border-top: 1px dashed var(--border-default); padding-top: 8px; }
-.card-result { font-family: Consolas, monospace; font-size: 12px; color: var(--text-secondary); padding: 2px 0; }
-.card-actions { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
-
 .input-row { display: flex; gap: 10px; margin-top: 12px; max-width: 860px; }
 .input-row > :first-child { flex: 1; }
 .cfg { display: flex; flex-direction: column; gap: 12px; }
 
 @media (max-width: 720px) {
   .ai { padding: 14px 16px; }
-  .msg.user, .msg.assistant, .card { max-width: 100%; }
+  .msg.user, .msg.assistant { max-width: 100%; }
 }
 
 /* === 常用工具类（替代 inline style） === */
-.gap-4 { margin-left: var(--space-1); }
-.gap-3 { margin-left: 3px; }
 
-.btn-label-row { display: inline-flex; align-items: center; }
-.btn-label-row > :not(:first-child) { margin-left: var(--space-1); }
 
 .cfg-modal { width: 520px; }
 .cfg-note { color: var(--text-tertiary); font-size: 13px; }

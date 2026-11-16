@@ -1,8 +1,15 @@
 <script setup lang="ts">
+import {
+  NButton,
+  NInput,
+  NRadioButton,
+  NRadioGroup,
+  NSelect,
+  useMessage,
+} from "naive-ui";
 import { ref, computed, onMounted, onActivated } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { useMessage } from "naive-ui";
 import { ChevronDown, ChevronRight } from "@lucide/vue";
 import AppIcon from "../components/AppIcon.vue";
 import { useSerialStore } from "../stores/serial";

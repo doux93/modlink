@@ -9,5 +9,6 @@ pub mod diag;
 pub mod knowledge;
 pub mod legacy_import;
 pub mod log_analysis;
+pub mod preview;
 pub mod response_slot;
 pub mod stress;

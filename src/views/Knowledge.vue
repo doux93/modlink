@@ -1,8 +1,18 @@
 <script setup lang="ts">
+import {
+  NButton,
+  NCard,
+  NCollapse,
+  NCollapseItem,
+  NDataTable,
+  NDivider,
+  NInput,
+  NTag,
+  useMessage,
+} from "naive-ui";
 import { computed, onActivated, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { useMessage } from "naive-ui";
 import { useSerialStore } from "../stores/serial";
 import type {
   KnowledgeCapabilities,

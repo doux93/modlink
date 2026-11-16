@@ -1,7 +1,12 @@
 <script setup lang="ts">
+import {
+  NButton,
+  NSelect,
+  NTag,
+  useMessage,
+} from "naive-ui";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { useMessage } from "naive-ui";
 import { useSerialStore } from "../stores/serial";
 import type { KnowledgeCapabilities, ManualContentLevel } from "../types";
 

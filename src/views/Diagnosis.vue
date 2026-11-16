@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import {
+  NButton,
+  NSelect,
+  NTag,
+  useDialog,
+  useMessage,
+} from "naive-ui";
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { useDialog, useMessage } from "naive-ui";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import {
   CheckCircle2,

@@ -31,6 +31,7 @@ npm ci                      # 按 lockfile 安装前端依赖
 npm run tauri dev           # 开发模式（热重载）
 npm test                    # 前端回归测试
 npm run build               # 前端类型检查 + 构建
+npm run check:bundle        # 首次加载的静态 JS 依赖总量预算
 cargo test --locked --manifest-path modulink-core/Cargo.toml
 cargo test --locked --manifest-path tests/storage/Cargo.toml
 python -m pip install -r tools/requirements.txt
@@ -52,6 +53,7 @@ Remove-Item Env:MODULINK_TEST_MANIFEST
 涉及真实串口的 ignored 测试需要按测试说明配置设备后单独运行。
 
 当前修复、存储迁移和实机验收步骤见 [修复说明](docs/repair-notes-2026-11-16.md)。
+页面拆分、按需加载和 Windows CI 改进见 [第二轮优化说明](docs/frontend-refactor-2026-11-16.md)。
 
 ## 无真机联调
 
