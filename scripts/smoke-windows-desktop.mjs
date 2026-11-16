@@ -54,6 +54,9 @@ try {
   page.setDefaultTimeout(15_000);
   await page.locator(".shell").waitFor();
   assert(!page.url().includes(":1420"), "Packaged app must not depend on Vite");
+  const knowledge = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("get_knowledge"));
+  assert(knowledge.profiles.length > 0, "Packaged module profiles must load through real IPC");
+  checks.push("packaged knowledge loaded through IPC");
   const closeWelcome = page.getByRole("button", { name: "关闭引导", exact: true });
   if (await closeWelcome.isVisible()) await closeWelcome.click();
   const pages = [["串口控制台", ".console"], ["验证中心", ".diag"], ["AI 助手", ".ai"], ["知识中心", ".kb-page"], ["稳定性验证", ".stress"], ["日志分析", ".log-analysis"]];

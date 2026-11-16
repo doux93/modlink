@@ -162,7 +162,10 @@ mod tests {
             .unwrap();
         assert!(requests.cancel("http-test"));
         assert!(task.await.unwrap().unwrap_err().contains("取消"));
-        server.join().unwrap();
+        // Let Hyper's connection task run while the server observes the close.
+        tokio::task::spawn_blocking(move || server.join().unwrap())
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
