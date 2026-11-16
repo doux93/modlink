@@ -121,9 +121,11 @@ try{
   logWidth:document.querySelector('.logpane').getBoundingClientRect().width,
   quickWidth:document.querySelector('.quick').getBoundingClientRect().width,
   terminalOverflow:document.querySelector('.io .terminal').scrollWidth-document.querySelector('.io .terminal').clientWidth,
+  logToolbarLabelHeight:Math.max(...[...document.querySelectorAll('.logpane-head b, .logpane-ops .n-checkbox__label')].map(el=>el.getBoundingClientRect().height)),
  }));
  assert(dual.terminalWidth >= 310 && dual.logWidth >= 200 && dual.quickWidth >= 200, 'Dual-port panels must leave readable width for each column');
  assert(dual.terminalOverflow <= 1, 'Log text must wrap inside narrow columns');
+ assert(dual.logToolbarLabelHeight <= 24, 'Log toolbar labels must not break across lines in narrow columns');
  // Check actual composited text/button colors in the rendered dark theme.
  const contrast = await page.evaluate(() => {
   const rgb = color => color.match(/[\d.]+/g).slice(0,3).map(Number);

@@ -448,11 +448,11 @@ function onKey(e: KeyboardEvent) {
   padding: 10px 6px 10px 4px; gap: 8px;
 }
 .logpane-head {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px;
   font-size: 13px; color: var(--text-primary);
 }
-.logpane-head b { display: inline-flex; align-items: center; gap: 6px; }
-.logpane-ops { display: flex; align-items: center; gap: 6px; }
+.logpane-head b { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; }
+.logpane-ops { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; white-space: nowrap; }
 
 /* === 工具类（替代 inline style） === */
 
