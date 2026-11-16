@@ -83,10 +83,17 @@ try {
   await page.locator(".quick-text").filter({ hasText: "AT+CSQ" }).waitFor();
   assert(await page.locator(".quick-item").getByRole("button", { name: "发送", exact: true }).isDisabled());
   // Confirm a real disk save, then reload WebView to exercise backend restoration.
-  await page.waitForFunction(async () => {
-    const saved = await window.__TAURI_INTERNALS__.invoke("load_quickcmds");
-    return saved?.groups?.some((group) => group.items.some((item) => item.text === "AT+CSQ"));
-  });
+  // waitForFunction treats an async predicate's Promise as truthy even when it
+  // resolves false. Await IPC in Node and retry until the debounced save lands.
+  let persisted = false;
+  const saveDeadline = Date.now() + 15_000;
+  while (Date.now() < saveDeadline) {
+    const saved = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("load_quickcmds"));
+    persisted = saved?.groups?.some((group) => group.items.some((item) => item.text === "AT+CSQ")) ?? false;
+    if (persisted) break;
+    await delay(100);
+  }
+  assert(persisted, "Quick command must be saved to disk before reloading");
   await page.reload();
   await page.locator(".quick-text").filter({ hasText: "AT+CSQ" }).waitFor();
   assert.equal(await page.locator("#global-error-overlay").count(), 0);
