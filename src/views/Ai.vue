@@ -2,9 +2,6 @@
 import {
   NButton,
   NInput,
-  NInputNumber,
-  NModal,
-  NPopconfirm,
   useDialog,
   useMessage,
 } from "naive-ui";
@@ -13,23 +10,23 @@ import { invoke } from "@tauri-apps/api/core";
 import { RefreshCw, Settings } from "@lucide/vue";
 import AppIcon from "../components/AppIcon.vue";
 import AiToolCard from "../components/ai/AiToolCard.vue";
+import AiSettingsDialog from "../components/ai/AiSettingsDialog.vue";
+import { useAiSettings } from "../composables/useAiSettings";
 import { useWorkspace } from "../composables/useWorkspace";
 import { useUiPrefs } from "../composables/useUiPrefs";
 import { useSerialStore } from "../stores/serial";
 import { useExecutionStore } from "../stores/execution";
-import { applicableAtCommands } from "../knowledge";
 import { usePendingTools } from "../composables/usePendingTools";
 import { useAiRequestGate, AiRequestTimeoutError, isRequestCancelled, type AiRequestContext } from "../composables/useAiRequestGate";
 import { deviceContextKey } from "../utils/deviceContext";
-import type { AiExecutionTarget, UiItem } from "../types/ai";
-import { splitAtArguments } from "../utils/atArgs";
+import type { AiExecutionTarget, UiItem, ManualSearchResult, AtCommandAuthorization } from "../types/ai";
 import { requestAiChat } from "../utils/aiTransport";
+import { createAiEvidence } from "../services/aiEvidence";
+import { toolsForMode } from "../services/aiTools";
 import type {
-  AtCommandDoc,
   DiagReport,
   ExecutionTarget,
   KnowledgeCapabilities,
-  ManualContentLevel,
 } from "../types";
 
 const store = useSerialStore();
@@ -40,23 +37,8 @@ const { connectDevice } = useWorkspace();
 const { activeView } = useUiPrefs();
 
 // ---------------- 配置 ----------------
-interface AiSettings {
-  base_url: string;
-  api_key: string;
-  api_key_configured: boolean;
-  model: string;
-  recent_log_lines: number;
-}
-const settings = ref<AiSettings>({
-  base_url: "",
-  api_key: "",
-  api_key_configured: false,
-  model: "auto",
-  recent_log_lines: 80,
-});
-const showSettings = ref(false);
-// API key 默认隐藏，需要用户主动点"显示"才会明文呈现（防肩窥）
-const revealApiKey = ref(false);
+const aiSettings = useAiSettings((text) => message.success(text));
+const { settings, load: loadSettings, open: openSettings } = aiSettings;
 const capabilitiesLoading = ref(true);
 let capabilitiesRequestVersion = 0;
 const CAPABILITIES_TIMEOUT_MS = 5000;
@@ -64,8 +46,7 @@ const CAPABILITIES_TIMEOUT_MS = 5000;
 onMounted(async () => {
   const capabilityLoad = refreshCapabilities();
   await store.init();
-  const s = (await invoke<any>("get_settings")) ?? {};
-  if (s.ai) settings.value = { ...settings.value, ...s.ai };
+  await loadSettings();
   await capabilityLoad;
 });
 
@@ -79,31 +60,6 @@ onActivated(async () => {
     await scrollBottom();
   }
 });
-
-async function saveSettings() {
-  const ai: Record<string, unknown> = {
-    base_url: settings.value.base_url,
-    model: settings.value.model,
-    recent_log_lines: settings.value.recent_log_lines,
-  };
-  if (settings.value.api_key.trim()) ai.api_key = settings.value.api_key.trim();
-  await invoke("save_settings", {
-    settings: { ai },
-  });
-  if (settings.value.api_key.trim()) settings.value.api_key_configured = true;
-  settings.value.api_key = "";
-  showSettings.value = false;
-  message.success("AI 配置已保存");
-  // 手册目录可能变动，立即刷新能力状态以同步 manualMode
-  await refreshCapabilities();
-}
-
-async function clearApiKey() {
-  await invoke("save_settings", { settings: { ai: { api_key: null } } });
-  settings.value.api_key = "";
-  settings.value.api_key_configured = false;
-  message.success("API key 已从系统凭据中删除");
-}
 
 // ---------------- 会话模型 ----------------
 
@@ -137,6 +93,10 @@ onBeforeUnmount(() => cancelActiveRequest(false));
 
 const capabilities = ref<KnowledgeCapabilities | null>(null);
 const persistedCapabilityEvidence = ref("（当前没有持久化实测记录。）");
+const { recentLog, activeManualMode, systemPrompt, localRisk, runtimeProbeDenial } = createAiEvidence(() => ({
+  profile: store.activeProfile, session: store.activeSession, knowledge: store.knowledge,
+  frames: store.activeFrames, capabilities: capabilities.value, persistedEvidence: persistedCapabilityEvidence.value,
+}));
 
 async function refreshCapabilities() {
   const requestVersion = ++capabilitiesRequestVersion;
@@ -200,155 +160,6 @@ async function scrollBottom() {
 }
 
 // ---------------- 上下文构造 ----------------
-const HIGH_RISK = /CFUN\s*=\s*1\s*,\s*1|CFUN\s*=\s*0|\+MRST|\+CRST|FACTORY|FORMAT|QPRTPARA/i;
-
-function recentLog(lines: number, filter?: string): string {
-  let fs = store.activeFrames;
-  if (filter) {
-    try {
-      const re = new RegExp(filter, "i");
-      fs = fs.filter((f) => re.test(f.text));
-    } catch {
-      fs = fs.filter((f) => f.text.toLowerCase().includes(filter.toLowerCase()));
-    }
-  }
-  return fs
-    .slice(-lines)
-    .map((f) => `${f.dir === "tx" ? ">>" : "<<"} ${f.hex ?? f.text}`)
-    .join("\n");
-}
-
-/** 轻量检索：从画像 + 知识库批量文档里挑与问题/日志相关的指令文档 */
-function retrieveDocs(question: string): string {
-  const kb = [
-    ...(store.activeProfile?.at_commands ?? []).map((command) => ({
-      command,
-      applicability: "profile" as const,
-    })),
-    ...applicableAtCommands(store.knowledge, store.activeProfile),
-  ];
-  const q = question.toUpperCase();
-  const log = recentLog(40).toUpperCase();
-  const inventoryIntent = /(?:哪些|所有|完整|清单|一览|汇总).*(?:指令|命令)|(?:指令|命令).*(?:哪些|所有|完整|清单|一览|汇总)/i.test(question);
-  const protocol = ["HTTPS", "HTTP", "MQTT", "FTP", "FOTA", "TCP", "UDP", "SSL", "GNSS", "NTP"]
-    .find((candidate) => q.includes(candidate));
-  if (inventoryIntent && protocol) {
-    const rank = (applicability: string) =>
-      applicability === "profile" || applicability === "exact" ? 3 : applicability === "generic" ? 2 : 1;
-    const commands = new Map<string, { command: AtCommandDoc; applicability: string }>();
-    for (const item of kb) {
-      if (item.applicability === "series") continue;
-      const commandName = item.command.cmd.toUpperCase();
-      const category = item.command.category?.toUpperCase() ?? "";
-      if (!commandName.includes(protocol) && !category.includes(protocol)) continue;
-      const existing = commands.get(commandName);
-      if (!existing || rank(item.applicability) > rank(existing.applicability)) {
-        commands.set(commandName, item);
-      }
-    }
-    if (commands.size) {
-      const CATALOG_LIMIT = 30;
-      const sorted = [...commands.values()].sort((left, right) =>
-        left.command.cmd.localeCompare(right.command.cmd)
-      );
-      const lines = sorted
-        .slice(0, CATALOG_LIMIT)
-        .map(({ command, applicability }) =>
-          `- ${command.cmd} | 适用性: ${applicability === "profile" ? "exact" : applicability} | ${command.title ?? ""}`
-        );
-      // 证据块只放数据：怎么用这份目录由系统提示词的规则约束，别混进来。
-      const header = sorted.length > CATALOG_LIMIT
-        ? `### ${protocol} AT 命令目录（共 ${sorted.length} 条，按名称排序显示前 ${CATALOG_LIMIT} 条）`
-        : `### ${protocol} AT 命令目录（共 ${sorted.length} 条，已完整列出）`;
-      return `${header}\n${lines.join("\n")}`;
-    }
-  }
-  const scored = kb
-    .map(({ command: c, applicability }) => {
-      let score = 0;
-      const name = c.cmd.toUpperCase().replace(/^AT\+?/, "");
-      if (name && q.includes(name)) score += 5;
-      if (name && log.includes(name)) score += 3;
-      for (const w of q.split(/[^A-Z0-9]+/)) {
-        if (w.length >= 4 && (c.doc?.toUpperCase().includes(w) || c.title?.toUpperCase().includes(w))) {
-          score += 1;
-        }
-      }
-      if (score > 0) {
-        score +=
-          applicability === "profile" || applicability === "exact"
-            ? 4
-            : applicability === "series"
-              ? 2
-              : 0;
-      }
-      return { c, applicability, score };
-    })
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
-  if (!scored.length) return "";
-  return scored
-    .map(
-      ({ c, applicability }) =>
-        `### ${c.cmd} ${c.title ?? ""}\n适用性: ${applicability}\n语法: ${c.syntax}\n${(c.doc ?? "").slice(0, 800)}`
-    )
-    .join("\n\n");
-}
-
-function activeManualMode(): ManualContentLevel {
-  if (capabilities.value?.effectiveManualMode) {
-    return capabilities.value.effectiveManualMode;
-  }
-  const mode = capabilities.value?.manualMode ?? "none";
-  if (mode !== "fulltext") return mode;
-  const coverage = capabilities.value?.fulltextModelCoverage;
-  // null/undefined 表示兼容 @1 全量包；@2 必须精确命中声明型号。
-  if (coverage == null) return "fulltext";
-  const activeModels = store.activeProfile?.model_codes ?? [];
-  return activeModels.some((model) =>
-    coverage.some((covered) => covered.toUpperCase() === model.toUpperCase())
-  )
-    ? "fulltext"
-    : "preview";
-}
-
-interface ManualSearchResult {
-  title?: string;
-  manual?: string;
-  models?: string[];
-  applicability?: "exact" | "series" | "generic" | "unknown";
-  content?: string;
-  contentLevel?: ManualContentLevel;
-  packId?: string;
-  packVersion?: string;
-  error?: string;
-  modelRestrictions?: string[];
-}
-
-interface AtCommandAuthorization {
-  command: string;
-  authorized: boolean;
-  applicability?: "exact" | "generic" | "standard" | "runtime";
-  manual?: string;
-  topicId?: string;
-  packId?: string;
-  packVersion?: string;
-  reasonCode: string;
-  reason: string;
-}
-
-function evidenceScopeLabel(result: ManualSearchResult): string {
-  if (result.applicability === "exact") return "exact（当前精确型号资料）";
-  if (result.applicability === "series") return "series（同系列参考资料）";
-  if (result.applicability === "unknown") return "unknown（参考资料，不可用于执行授权）";
-  if (result.applicability === "generic") {
-    return result.contentLevel === "fulltext" && result.packId !== "cmiot.core.builtin"
-      ? "generic（当前型号包明确包含的通用资料）"
-      : "generic（通用资料）";
-  }
-  return "unknown（参考资料，不可用于执行授权）";
-}
 
 const MANUAL_INTENT = /\b(?:AT|HTTP|HTTPS|MQTT|FTP|FOTA|TCP|UDP|SSL|GNSS|NTP)\b|指令|命令|配置|设置|使用|用法|流程|步骤|参数|手册|怎么|如何/i;
 
@@ -374,208 +185,6 @@ async function prefetchManualEvidence(
   }
 }
 
-function levenshtein(a: string, b: string): number {
-  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
-  for (let i = 1; i <= a.length; i++) {
-    let diagonal = previous[0];
-    previous[0] = i;
-    for (let j = 1; j <= b.length; j++) {
-      const above = previous[j];
-      previous[j] = Math.min(
-        previous[j] + 1,
-        previous[j - 1] + 1,
-        diagonal + (a[i - 1] === b[j - 1] ? 0 : 1)
-      );
-      diagonal = above;
-    }
-  }
-  return previous[b.length];
-}
-
-function modelCorrectionContext(question: string): string {
-  const known = capabilities.value?.modelCoverage ?? [];
-  const knownSet = new Set(known.map((model) => model.toUpperCase()));
-  const mentioned = question.toUpperCase().match(/\b(?:ML|MN|MR)\d{3,4}(?:-[A-Z0-9]+|[A-Z])?\b/g) ?? [];
-  const corrections = [...new Set(mentioned)]
-    .filter((model) => !knownSet.has(model))
-    .map((model) => {
-      const nearest = known
-        .map((candidate) => ({ candidate, distance: levenshtein(model, candidate.toUpperCase()) }))
-        .sort((left, right) => left.distance - right.distance)[0];
-      return nearest && nearest.distance <= 2
-        ? `用户提到的 ${model} 不在型号目录中，最接近 ${nearest.candidate}；必须先纠正并请用户确认。`
-        : `用户提到的 ${model} 不在型号目录中；必须明确提示无法识别，不能假设该型号存在。`;
-    });
-  return corrections.join("\n");
-}
-
-function manualEvidenceContext(evidence: ManualSearchResult[]): string {
-  if (!evidence.length) return "（自动检索未命中，不得据此编造完整流程或参数。）";
-  return evidence
-    .map((result, index) =>
-      `### [${index + 1}] ${result.title || "未命名章节"}\n` +
-      `手册: ${result.manual || "-"} | 适用性: ${evidenceScopeLabel(result)} | 内容级别: ${result.contentLevel || "-"} | 知识包: ${result.packId || "-"}@${result.packVersion || "-"}\n` +
-      `${result.modelRestrictions?.length ? `当前型号限制（必须优先遵守）:\n${result.modelRestrictions.map((note) => `- ${note}`).join("\n")}\n` : ""}` +
-      `${(result.content || "").slice(0, 4000)}`
-    )
-    .join("\n\n");
-}
-
-function runtimeCapabilityContext(): string {
-  const latest = new Map<string, { query: string; responses: string[] }>();
-  let current: { name: string; query: string; responses: string[] } | null = null;
-  for (const frame of store.activeFrames) {
-    const text = frame.text.trim();
-    if (frame.dir === "tx") {
-      const match = text.match(/^(AT(?:\+[A-Z0-9]+|[A-Z0-9]*))=\?$/i);
-      current = match ? { name: match[1].toUpperCase(), query: text, responses: [] } : null;
-      if (current) latest.set(current.name, current);
-    } else if (current && text && text.toUpperCase() !== current.query.toUpperCase()) {
-      current.responses.push(text);
-    }
-  }
-  if (!latest.size) return "（当前会话没有参数能力查询记录。）";
-  return [...latest.values()]
-    .slice(-10)
-    .map((probe) => `>> ${probe.query}\n${probe.responses.slice(0, 16).map((line) => `<< ${line}`).join("\n")}`)
-    .join("\n\n");
-}
-
-function systemPrompt(question: string, manualEvidence: ManualSearchResult[]): string {
-  const profile = store.activeProfile;
-  const conn = store.activeSession?.connected
-    ? `已连接 ${store.activePort} @ ${store.activeSession.baud}`
-    : "串口未连接";
-  const docs = retrieveDocs(question);
-  const mode = activeManualMode();
-  const modelCorrection = modelCorrectionContext(question);
-
-  const manualRule = mode === "fulltext"
-    ? "6. 涉及功能配置流程、指令详细用法、专题功能（5G/蓝牙/HTTP/FOTA 等）时，先调 search_manuals 检索官方手册再回答，可以表述“根据手册正文”，并注明出处手册名和章节。"
-    : mode === "preview"
-      ? "6. 涉及功能配置流程、指令详细用法时，可调 search_manuals 检索内置摘要。但摘要可能不完整，涉及具体参数和完整步骤时必须提示用户核对原手册，不得声称已根据手册全文。"
-      : "6. 当前未安装手册知识包，不得调用 search_manuals，也不得宣称有任何手册依据。涉及手册内容时建议用户查阅官方文档。";
-
-  const modeLabel = mode === "fulltext" ? "全文手册" : mode === "preview" ? "摘要手册" : "无手册";
-  const coreStatus = capabilities.value?.coreAvailable ? "已就绪" : "未就绪";
-
-  return `你是蜂窝通信模组 AT 调试专家助手，嵌入在 ModuLink Studio 调试工具中，帮助用户（嵌入式工程师/FAE/测试）排查模组问题。
-
-规则：
-1. 需要执行 AT 指令时，必须调用 propose_at_sequence 工具提议，绝不让用户手敲，也绝不假设已执行；工具会经用户确认后执行并把结果返回给你。
-2. 重启/擦除/恢复出厂类指令必须在 steps 里标 risk 字段（reboot/erase）。
-3. 不得虚构 AT 指令；不确定的指令先说明依据或建议查询手册。
-4. 回答用中文，简洁、结论先行；错误码优先调 lookup_error_code。
-5. 需要更多日志时调 get_recent_log；怀疑入网问题时可提议 run_diagnostic 跑"入网连通性推荐检查"。
-${manualRule}
-7. 证据适用性必须准确表达：exact 是当前精确型号资料；series 只代表同系列参考，不得声称已在当前型号验证；unknown 是适用范围未知的参考资料，不得用于 AT 执行授权；generic 若来自当前已验证型号包的全文，是该型号包明确携带的通用适用资料，可以据此回答和提议指令，但不得描述成当前型号专属或实测资料。禁止把这种 generic 全文误报为“知识库缺少当前型号依据”。
-8. AI 提议 AT 指令前，应结合内置 AT 卡片校验指令格式和风险，不能只凭手册摘要生成。上下文若给出"AT 命令目录"，它就是当前型号的权威命令清单：清单类问题以它为准，不得把目录中已有的命令说成未检索到，也不得跨命令族混用。
-9. 下方“自动检索手册证据”是本轮问题的优先依据。涉及完整流程时必须按证据回答；未命中时明确说明，禁止用常识补齐指令。某次 AT 提议被策略拒绝，只表示所提议的具体命令缺少依据，不代表整个功能没有手册；此时应重新检索协议专用手册并改用正文中实际出现的命令，禁止宣称该功能“无手册资料”。
-10. 型号目录校验提示必须执行：未知或疑似拼错的型号先纠正并确认，不能静默接受。
-11. “命令存在”不等于“该型号支持该命令的全部参数值”。当前型号限制说明必须高于通用参数表；串口 AT+命令=? 的当前模组实测范围优先级最高。若实测只返回 0，不得建议值 1/2，也不得据参数名推断功能受支持。
-
-## 当前环境
-模组画像: ${profile?.name ?? "未选择"} (model: ${profile?.model_codes?.join(", ") || "-"}; series: ${profile?.series || "-"}; support: ${profile?.support_level || "-"})
-连接状态: ${conn}
-知识能力: 核心包${coreStatus} | 手册: ${modeLabel}
-${modelCorrection ? `型号目录校验:\n${modelCorrection}` : ""}
-${docs ? `\n## 相关手册摘录\n${docs}` : ""}
-
-## 自动检索手册证据
-${manualEvidenceContext(manualEvidence)}
-
-## 当前模组参数能力实测（优先级高于手册通用范围）
-${persistedCapabilityEvidence.value}
-
-## 当前会话参数查询（尚未持久化的即时证据）
-${runtimeCapabilityContext()}`;
-}
-
-const TOOLS = [
-  {
-    type: "function",
-    function: {
-      name: "propose_at_sequence",
-      description: "提议一组 AT 指令序列，由用户确认后执行，执行结果会返回给你",
-      parameters: {
-        type: "object",
-        properties: {
-          purpose: { type: "string", description: "这组指令的目的（给用户看）" },
-          steps: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                cmd: { type: "string" },
-                expect: { type: "string", description: "期望响应的正则，可选" },
-                delay_ms: { type: "number" },
-                risk: { type: "string", enum: ["none", "reboot", "erase", "config"] },
-              },
-              required: ["cmd"],
-            },
-          },
-        },
-        required: ["purpose", "steps"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "lookup_error_code",
-      description: "查询本地错误码知识库（+CME/+CMS ERROR 码的含义、原因、建议）",
-      parameters: {
-        type: "object",
-        properties: {
-          code_type: { type: "string", enum: ["cme", "cms"] },
-          code: { type: "number" },
-        },
-        required: ["code_type", "code"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_recent_log",
-      description: "获取最近的串口日志（可选正则过滤），用于你主动翻日志分析",
-      parameters: {
-        type: "object",
-        properties: {
-          lines: { type: "number", description: "行数，默认 80，最大 300" },
-          filter: { type: "string", description: "正则过滤，可选" },
-        },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "run_diagnostic",
-      description: "运行推荐检查或测试用例（会经用户确认），返回结构化结果",
-      parameters: {
-        type: "object",
-        properties: { flow_id: { type: "string", description: "默认 network_attach" } },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "search_manuals",
-      description: "DYNAMIC_MANUAL_DESC",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "检索关键词，如 '5G LAN 配置' 或 'MHTTPCFG'" },
-          top_k: { type: "number", description: "返回条数，默认 3" },
-        },
-        required: ["query"],
-      },
-    },
-  },
-];
-
 // ---------------- LLM 调用与工具编排 ----------------
 async function callLLM(
   question: string,
@@ -597,26 +206,9 @@ async function callLLM(
     persistedCapabilityEvidence.value = "（持久化实测能力读取失败。）";
   }
   const mode = activeManualMode();
-  let tools = mode === "none"
-    ? TOOLS.filter((t) => t.function.name !== "search_manuals")
-    : TOOLS.map((t) => {
-        if (t.function.name === "search_manuals") {
-          return {
-            ...t,
-            function: {
-              ...t.function,
-              description:
-                mode === "fulltext"
-                  ? "在本地手册知识库中全文检索。当问题涉及功能配置流程、指令详细用法、5G/蓝牙/HTTP 等专题时使用"
-                  : "在内置手册摘要知识库中检索。返回的是摘要而非全文，涉及具体参数时需提示用户核对原手册",
-            },
-          };
-        }
-        return t;
-      });
   const body = {
     messages: [{ role: "system", content: systemPrompt(question, manualEvidence) }, ...llmMessages.value],
-    tools: tools,
+    tools: toolsForMode(mode),
     temperature: 0.2,
   };
   setRequestStage(request, "waiting");
@@ -629,17 +221,6 @@ async function callLLM(
     request
   );
   return resp.choices?.[0]?.message;
-}
-
-function localRisk(cmd: string): string | undefined {
-  if (HIGH_RISK.test(cmd)) return "reboot";
-  const body = cmd.trim().toUpperCase().split(/[=?]/)[0];
-  const docs = [
-    ...(store.activeProfile?.at_commands ?? []),
-    ...applicableAtCommands(store.knowledge, store.activeProfile).map((item) => item.command),
-  ];
-  const risk = docs.find((doc) => doc.cmd.toUpperCase() === body)?.risk;
-  return risk && risk !== "none" ? risk : undefined;
 }
 
 async function authorizeCommands(commands: string[], profileId?: string): Promise<AtCommandAuthorization[]> {
@@ -655,43 +236,6 @@ async function authorizeCommands(commands: string[], profileId?: string): Promis
       ? { ...decision, authorized: false, reasonCode: "runtime_capability_restricted", reason: denial }
       : decision;
   });
-}
-
-function runtimeProbeDenial(command: string): string | undefined {
-  const name = command.trim().toUpperCase().match(/^(AT(?:\+[A-Z0-9]+|[A-Z0-9]*))/)?.[1];
-  if (!name || command.trim().endsWith("=?")) return undefined;
-  let response: string[] = [];
-  let collecting = false;
-  for (const frame of store.activeFrames) {
-    const text = frame.text.trim();
-    if (frame.dir === "tx") {
-      collecting = text.toUpperCase() === `${name}=?`;
-      if (collecting) response = [];
-    } else if (collecting && text.toUpperCase() !== `${name}=?`) {
-      response.push(text);
-    }
-  }
-  if (!response.length) return undefined;
-  const args = splitAtArguments(command);
-  for (let index = 0; index + 1 < args.length; index++) {
-    const selector = args[index].replace(/^"|"$/g, "");
-    if (!/^[a-z_][a-z0-9_]*$/i.test(selector)) continue;
-    const proposed = Number(args[index + 1]);
-    if (!Number.isInteger(proposed)) continue;
-    const line = response.find((item) =>
-      new RegExp(`["']${selector}["']`, "i").test(item)
-    );
-    if (!line) continue;
-    const tail = line.slice(line.search(new RegExp(`["']${selector}["']`, "i")) + selector.length + 2);
-    const range = tail.match(/\(?\s*(-?\d+)\s*(?:-\s*(-?\d+))?\s*\)?/);
-    if (!range) continue;
-    const minimum = Number(range[1]);
-    const maximum = range[2] == null ? minimum : Number(range[2]);
-    if (proposed < minimum || proposed > maximum) {
-      return `当前模组 ${name}=? 实测显示参数 ${selector} 仅支持 ${minimum === maximum ? minimum : `${minimum}-${maximum}`}，已拒绝值 ${proposed}`;
-    }
-  }
-  return undefined;
 }
 
 /** 主循环：直到 assistant 给出纯文本答复或需要用户确认 */
@@ -1209,7 +753,7 @@ const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资�
           </span>
         </n-button>
         <n-button size="small" quaternary :disabled="foregroundOperations > 0" @click="clearChat">清空对话</n-button>
-        <n-button size="small" quaternary @click="showSettings = true">
+        <n-button size="small" quaternary @click="openSettings">
           <span class="btn-label-row">
             <AppIcon :icon="Settings" :size="13" />
             <span class="gap-4">配置</span>
@@ -1222,7 +766,7 @@ const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资�
       <span>目标设备 <b>{{ connected ? store.activePort : '未连接，可咨询或分析已有材料' }}</b></span>
       <span>自动附带日志 <b>{{ attachedLogCount }} 条</b></span><span>资料 <b>{{ manualLabel }}</b></span>
       <n-button v-if="!connected" size="small" secondary @click="connectDevice">连接设备</n-button>
-      <n-button v-if="!settings.base_url" size="small" secondary @click="showSettings = true">配置 AI 服务</n-button>
+      <n-button v-if="!settings.base_url" size="small" secondary @click="openSettings">配置 AI 服务</n-button>
       <n-button v-if="connected" size="small" text @click="activeView = 'diag'">返回诊断与复测</n-button>
     </div>
     <details v-if="attachedLogCount" class="context-preview"><summary>查看随问题发送的最近串口日志</summary><pre>{{ recentLog(settings.recent_log_lines) }}</pre></details>
@@ -1276,49 +820,7 @@ const manualLabel = computed(() => capabilitiesLoading.value ? "正在检查资�
       <n-button v-else type="primary" :loading="busy" :disabled="busy || awaitingConfirmation" @click="send()">发送</n-button>
     </div>
 
-    <!-- 配置弹窗 -->
-    <n-modal v-model:show="showSettings" preset="card" class="cfg-modal" title="AI 与知识库配置">
-      <div class="cfg">
-        <n-input v-model:value="settings.base_url" placeholder="Base URL，如 https://onerouter.cmaiot.cn/v1" />
-        <div class="cfg-key-row">
-          <n-input
-            v-model:value="settings.api_key"
-            :type="revealApiKey ? 'text' : 'password'"
-            :placeholder="settings.api_key_configured ? 'API Key 已配置，留空表示不修改' : 'API Key'"
-            class="cfg-key-input"
-          />
-          <n-button
-            size="small"
-            quaternary
-            :title="revealApiKey ? '隐藏 API Key' : '明文显示 API Key（请确认环境安全）'"
-            @click="revealApiKey = !revealApiKey"
-          >
-            {{ revealApiKey ? "隐藏" : "显示" }}
-          </n-button>
-        </div>
-        <small v-if="settings.api_key_configured" class="cfg-note">API key 保存在 Windows 系统凭据中</small>
-        <div class="cfg-row">
-          <n-input v-model:value="settings.model" placeholder="模型，如 auto" class="cfg-input-model" />
-          <n-input-number v-model:value="settings.recent_log_lines" :min="20" :max="300" class="cfg-input-num">
-            <template #suffix>行日志</template>
-          </n-input-number>
-        </div>
-        <div class="cfg-note">
-          手册知识包管理已迁移至「知识中心」页面，当前型号模式：{{ activeManualMode() === "fulltext" ? "全文" : activeManualMode() === "preview" ? "摘要" : "不可用" }}
-        </div>
-        <small class="cfg-note">连接地址和模型保存在应用配置目录，API key 不写入配置文件</small>
-      </div>
-      <template #footer>
-        <div class="cfg-actions">
-          <n-popconfirm v-if="settings.api_key_configured" @positive-click="clearApiKey">
-            <template #trigger><n-button type="error" tertiary>清除 API Key</n-button></template>
-            确认删除系统凭据中的 API key？
-          </n-popconfirm>
-          <n-button @click="showSettings = false">取消</n-button>
-          <n-button type="primary" @click="saveSettings">保存</n-button>
-        </div>
-      </template>
-    </n-modal>
+    <AiSettingsDialog :controller="aiSettings" :manual-mode="activeManualMode()" />
   </div>
 </template>
 
@@ -1347,7 +849,6 @@ h2 { font-size: 18px; color: var(--text-primary); }
 
 .input-row { display: flex; gap: 10px; margin-top: 12px; max-width: 860px; }
 .input-row > :first-child { flex: 1; }
-.cfg { display: flex; flex-direction: column; gap: 12px; }
 
 @media (max-width: 720px) {
   .ai { padding: 14px 16px; }
@@ -1357,15 +858,6 @@ h2 { font-size: 18px; color: var(--text-primary); }
 /* === 常用工具类（替代 inline style） === */
 
 
-.cfg-modal { width: 520px; }
-.cfg-note { color: var(--text-tertiary); font-size: 13px; }
-.cfg-row { display: flex; gap: 10px; }
-.cfg-row > :first-child { flex: 1; }
-.cfg-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.cfg-key-row { display: flex; align-items: center; gap: 8px; }
-.cfg-key-row .cfg-key-input { flex: 1; min-width: 0; }
-.cfg-input-model { flex: 1; }
-.cfg-input-num { width: 160px; }
 
 .ai-context { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-raised); font-size: 12px; color: var(--text-secondary); }
 .ai-context b { margin-left: 5px; color: var(--text-primary); font-weight: 500; }

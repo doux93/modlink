@@ -17,8 +17,12 @@ pub fn open_serial(
 }
 
 #[tauri::command]
-pub fn close_serial(manager: State<'_, SerialManager>, port: String) -> Result<(), String> {
-    manager.close(&port)
+pub fn close_serial(
+    manager: State<'_, SerialManager>,
+    port: String,
+    session_generation: u64,
+) -> Result<(), String> {
+    manager.close_generation(&port, session_generation)
 }
 
 #[tauri::command]

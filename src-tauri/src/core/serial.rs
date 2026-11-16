@@ -106,6 +106,45 @@ pub struct SerialManager {
     sessions: Mutex<HashMap<String, Arc<Session>>>,
 }
 
+// Caller holds the manager lock across validation and removal.
+fn take_session<T>(
+    sessions: &mut HashMap<String, T>,
+    port: &str,
+    expected: Option<u64>,
+    generation: impl Fn(&T) -> u64,
+) -> Result<Option<T>, String> {
+    if let (Some(expected), Some(session)) = (expected, sessions.get(port)) {
+        if generation(session) != expected {
+            return Err(format!("{port} 会话已变化，未关闭当前连接"));
+        }
+    }
+    Ok(sessions.remove(port)) // Closing an already-removed connection is idempotent.
+}
+
+#[cfg(test)]
+mod close_tests {
+    use super::*;
+    #[test]
+    fn late_close_keeps_the_reconnected_session() {
+        let mut sessions = HashMap::from([("COM1".to_owned(), 8_u64)]);
+        assert!(take_session(&mut sessions, "COM1", Some(7), |v| *v).is_err());
+        assert_eq!(sessions.get("COM1"), Some(&8));
+    }
+    #[test]
+    fn close_removes_only_the_matching_session_and_is_retryable() {
+        let mut sessions = HashMap::from([("COM1".to_owned(), 7_u64), ("COM2".to_owned(), 9)]);
+        assert_eq!(
+            take_session(&mut sessions, "COM1", Some(7), |v| *v).unwrap(),
+            Some(7)
+        );
+        assert_eq!(
+            take_session(&mut sessions, "COM1", Some(7), |v| *v).unwrap(),
+            None
+        );
+        assert_eq!(sessions.get("COM2"), Some(&9));
+    }
+}
+
 impl Default for SerialManager {
     fn default() -> Self {
         Self {
@@ -185,16 +224,22 @@ impl SerialManager {
         })
     }
 
+    #[cfg(test)]
     pub fn close(&self, port_name: &str) -> Result<(), String> {
+        self.close_matching(port_name, None)
+    }
+
+    pub fn close_generation(&self, port_name: &str, generation: u64) -> Result<(), String> {
+        self.close_matching(port_name, Some(generation))
+    }
+
+    fn close_matching(&self, port_name: &str, generation: Option<u64>) -> Result<(), String> {
         let mut sessions = self.sessions.lock();
-        match sessions.remove(port_name) {
-            Some(s) => {
-                s.stop.store(true, Ordering::Relaxed);
-                finish_pending(&s.pending, "DISCONNECTED");
-                Ok(())
-            }
-            None => Err(format!("{port_name} 未打开")),
+        if let Some(s) = take_session(&mut sessions, port_name, generation, |s| s.generation)? {
+            s.stop.store(true, Ordering::Relaxed);
+            finish_pending(&s.pending, "DISCONNECTED");
         }
+        Ok(())
     }
 
     pub fn get(&self, port_name: &str) -> Result<Arc<Session>, String> {

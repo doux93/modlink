@@ -1,6 +1,6 @@
 import { isAtCommand } from "../utils/atCommand";
 import { probeProfile } from "../services/profileIdentification";
-import type { DeviceSession } from "../types/device";
+import type { DeviceSession, DeviceGroup } from "../types/device";
 import { defineStore } from "pinia";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -27,13 +27,7 @@ export type SessionInfo = DeviceSession;
 // Requests belong to a session object. Reconnect/manual selection invalidates their result.
 const identificationRuns = new WeakMap<SessionInfo, Promise<string | null>>();
 
-/** 设备组：AT 口 + 可选日志口绑定为一个"设备"，分屏显示 */
-export interface DeviceGroup {
-  id: string;
-  name: string;
-  atPort: string;
-  logPort: string;
-}
+export type { DeviceGroup } from "../types/device";
 
 export const useSerialStore = defineStore("serial", {
   state: () => ({
@@ -271,24 +265,21 @@ export const useSerialStore = defineStore("serial", {
       this.activePort = atPort;
     },
     async closeDeviceGroup(id: string) {
-      const g = this.deviceGroups.find((x) => x.id === id);
-      if (!g) return;
-      this.deviceGroups = this.deviceGroups.filter((x) => x.id !== id);
-      await this.closeSession(g.atPort);
-      if (g.logPort) await this.closeSession(g.logPort);
-      // 焦点落到下一个可见页签（组的 AT 口或独立会话）
-      this.activePort =
-        this.deviceGroups[0]?.atPort ?? this.standaloneSessions[0]?.port ?? "";
+      const group = this.deviceGroups.find((g) => g.id === id);
+      if (!group) return;
+      const targets = this.sessions.filter((s) => s.port === group.atPort || s.port === group.logPort)
+        .map((session) => ({ session, generation: session.generation }));
+      const { closeGroup } = await import("../services/sessionClosing");
+      return closeGroup(this, group, targets);
     },
     async closeSession(port: string) {
-      const s = this.sessions.find((x) => x.port === port);
-      if (s?.connected) {
-        await invoke("close_serial", { port });
-      }
-      this.sessions = this.sessions.filter((x) => x.port !== port);
-      if (this.activePort === port) {
-        this.activePort = this.sessions[0]?.port ?? "";
-      }
+      const group = this.deviceGroups.find((g) => g.atPort === port || g.logPort === port);
+      if (group) return this.closeDeviceGroup(group.id);
+      const session = this.sessions.find((s) => s.port === port);
+      if (!session) return;
+      const generation = session.generation;
+      const { closeSession } = await import("../services/sessionClosing");
+      return closeSession(this, session, generation);
     },
     executionTarget(port: string): ExecutionTarget {
       const session = this.sessions.find((item) => item.port === port);
@@ -377,10 +368,8 @@ export const useSerialStore = defineStore("serial", {
         }
       }, 800);
     },
-    async exportLegacy(path: string) {
-      if (this.quickCmds) {
-        await invoke("export_legacy", { path, data: this.quickCmds });
-      }
+    async exportLegacy(path: string, data: QuickCmdsFile) {
+      await invoke("export_legacy", { path, data });
     },
   },
 });

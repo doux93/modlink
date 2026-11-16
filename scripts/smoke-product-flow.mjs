@@ -36,7 +36,7 @@ async function screenshot(name) {
 }
 await page.addInitScript(()=>{
  localStorage.setItem('modulink-onboarding-completed','1');localStorage.setItem('ml.theme','light');
- const callbacks=new Map();const listeners=new Map();let next=1;
+ const callbacks=new Map();const listeners=new Map();let next=1;let failSettings=true;let failLogClose=true;
  window.__emitFixtureEvent=(name,payload)=>callbacks.get(listeners.get(name))?.({event:name,payload,id:0});
  const flow={id:'network_attach',name:'入网连通性检查',kind:'checkup',verified:true,category:'network',execution_mode:'readonly',applies_to:[],source:'内置基础检查',steps:[{id:'sim',title:'SIM 卡',command:'AT+CPIN?',timeout_ms:2000}]};
  const knowledge={profiles:[{id:'generic',schema:'',name:'通用蜂窝模组',support_level:'generic',at_commands:[],intents:[],capabilities:[],ports:[],urc_patterns:[],model_codes:[],diagnostics:[],error_code_tables:[],family:'',series:'',vendor:'',line_ending:'\r\n'}],flows:[flow],error_codes:{},profile_error_codes:{},at_docs:[],warnings:[]};
@@ -52,7 +52,8 @@ await page.addInitScript(()=>{
   if(command==='list_applicable_flows')return ['network_attach'];
   if(command==='get_knowledge_capabilities')return {coreAvailable:true,manualMode:'preview',effectiveManualMode:'preview',installedPacks:[],modelCoverage:[],fulltextModelCoverage:[],topicCount:0,degradationReason:'仅有摘要参考'};
   if(command==='get_settings')return {ai:{base_url:'',api_key_configured:false},kb:{manuals_dir:''}};
-  if(command==='close_serial')return;
+  if(command==='save_settings'){if(failSettings){failSettings=false;throw new Error('Fixture: configuration write denied');}return;}
+  if(command==='close_serial'){if(args.port==='COM8' && failLogClose){failLogClose=false;throw new Error('Fixture: log port close denied');}return;}
   if(command==='open_serial')return {port:args.port,baud:args.baud,generation:1};
   if(command==='run_diagnostic')return {flow_id:'network_attach',flow_name:flow.name,overall:'fail',steps:[{id:'sim',title:'SIM 卡检查',result:'fail',detail:'SIM 卡未就绪',reason:'设备返回 +CME ERROR: 10，未检测到 SIM 卡。',suggestion:'检查卡槽接触和卡片方向，重新上电后复测。',raw:['AT+CPIN?','+CME ERROR: 10'],collected:[],elapsed_ms:340}]};
   if(command==='get_capability_evidence_context')return '';
@@ -94,6 +95,16 @@ try{
  await page.getByRole('button',{name:'AI 分析异常',exact:true}).click();await page.locator('.ai').waitFor();
  assert((await page.locator('.ai textarea').first().inputValue()).includes('+CME ERROR: 10'));
  await screenshot('light-ai.png');
+ await page.locator('.ai-head').getByRole('button',{name:'配置',exact:true}).click();
+ await page.getByPlaceholder('Base URL，如 https://onerouter.cmaiot.cn/v1',{exact:true}).fill('https://fixture.invalid/v1');
+ await page.locator('.cfg-modal').getByRole('button',{name:'保存',exact:true}).click();
+ await page.locator('.cfg-error').waitFor();
+ assert((await page.getByPlaceholder('Base URL，如 https://onerouter.cmaiot.cn/v1',{exact:true}).inputValue())==='https://fixture.invalid/v1');
+ assert((await page.locator('.ai-head').innerText()).includes('未配置 AI 服务'));
+ await screenshot('light-ai-settings-retry.png');
+ await page.locator('.cfg-modal').getByRole('button',{name:'保存',exact:true}).click();
+ await page.locator('.cfg-modal').waitFor({state:'hidden'});
+ assert(!(await page.locator('.ai-head').innerText()).includes('未配置 AI 服务'));
  await page.locator('.sidebar-footer [role=switch]').click();
  await screenshot('dark-ai.png');
  await page.getByRole('link',{name:'串口控制台',exact:true}).click();await page.locator('.console').waitFor();
@@ -170,10 +181,19 @@ try{
  await page.setViewportSize({width:1028,height:749});
  await page.locator('.quick').waitFor({state:'hidden'});
  assert(await page.evaluate(()=>localStorage.getItem('ml.showQuickCommands')==='0'), 'Resize must preserve an explicit closed preference');
+ await page.getByRole('button',{name:'关闭设备 COM7',exact:true}).click();
+ await page.locator('.connection-state').filter({hasText:'串口已断开'}).waitFor();
+ await page.getByRole('button',{name:'关闭设备 COM7',exact:true}).waitFor();
+ assert(await page.locator('.logpane').isVisible(), 'A failed log close must keep the group available for retry');
+ await screenshot('dark-partial-close.png');
+ await page.getByRole('button',{name:'关闭设备 COM7',exact:true}).click();
+ await page.locator('.logpane').waitFor({state:'hidden'});
+ assert((await page.locator('.device-context').innerText()).includes('COM3'));
+
 
  assert.deepEqual(errors,[]);
  const screenshots=(await readdir(output)).filter(name=>name.endsWith('.png')).length;
- await writeFile(path.join(output,'result.json'), JSON.stringify({passed:true, fixture:true, commit:process.env.GITHUB_SHA, checks:['connection with custom settings', 'diagnostic result', 'AI draft handoff without sending', 'compact layout', 'compact heading and log height', 'single-device tab removal', 'empty panel stays closed', 'saved commands open automatically', 'dual-port automatic collapse', 'floating panel preserves terminal width', 'panel Escape returns focus', 'wide inline layout', 'explicit closed preference survives resize', 'device state and available actions', 'dark text contrast'], screenshots, compact, dual, contrast},null,2));
+ await writeFile(path.join(output,'result.json'), JSON.stringify({passed:true, fixture:true, commit:process.env.GITHUB_SHA, checks:['connection with custom settings', 'diagnostic result', 'AI draft handoff without sending', 'compact layout', 'compact heading and log height', 'single-device tab removal', 'empty panel stays closed', 'saved commands open automatically', 'dual-port automatic collapse', 'floating panel preserves terminal width', 'panel Escape returns focus', 'wide inline layout', 'explicit closed preference survives resize', 'device state and available actions', 'dark text contrast', 'settings failure preserves draft and saved state', 'settings retry applies saved state', 'partial group close retains state and retries'], screenshots, compact, dual, contrast},null,2));
  console.log(`Visual preview flows passed: connected fixture, diagnosis, AI handoff, ${screenshots} screenshots; no hardware used.`);
 }catch(error){
  await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});

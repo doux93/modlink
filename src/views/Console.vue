@@ -20,6 +20,7 @@ import { useSerialStore } from "../stores/serial";
 import { applicableAtCommands } from "../knowledge";
 import { useUiPrefs } from "../composables/useUiPrefs";
 import { useConsoleLayout } from "../composables/useConsoleLayout";
+import { useAsyncAction } from "../composables/useAsyncAction";
 
 const store = useSerialStore();
 const message = useMessage();
@@ -54,16 +55,26 @@ function clearLogPane() {
   if (lp) store.framesByPort[lp] = [];
 }
 
-async function saveLogPane() {
-  const lp = store.activeDeviceGroup?.logPort;
-  if (!lp) return;
-  const path = await saveDialog({
-    defaultPath: `modulink_log_${lp}_${Date.now()}.log`,
-    filters: [{ name: "日志", extensions: ["log", "txt"] }],
+const { busy: savingLog, error: logSaveError, run: saveLogAction } = useAsyncAction("保存日志失败", (error) => message.error(error));
+function savePortLog(port: string) {
+  return saveLogAction(async () => {
+    const target = store.executionTarget(port);
+    const path = await saveDialog({
+      defaultPath: `modulink_${target.port}_${Date.now()}.log`,
+      filters: [{ name: "日志", extensions: ["log", "txt"] }],
+    });
+    if (!path) return;
+    await invoke("export_session_log", { port: target.port, sessionGeneration: target.sessionGeneration, path });
+    message.success(`${target.port} 日志已保存`);
   });
-  if (!path) return;
-  await invoke("export_session_log", { port: lp, path });
-  message.success("日志口数据已保存");
+}
+function saveLogPane() {
+  const port = store.activeDeviceGroup?.logPort;
+  if (port) return savePortLog(port);
+}
+async function closeGroup(id: string) {
+  try { await store.closeDeviceGroup(id); }
+  catch (error) { message.error(String(error)); }
 }
 
 const { bodyEl, quickVisible, quickFloating, quickWidth, logWidth, toggleQuick, closeQuick, startDrag } = useConsoleLayout(
@@ -92,15 +103,7 @@ const filteredFrames = computed(() => {
 const displayedFrames = computed(() => filteredFrames.value.slice(-RENDER_CAP));
 const hiddenCount = computed(() => Math.max(0, filteredFrames.value.length - RENDER_CAP));
 
-async function saveLog() {
-  const path = await saveDialog({
-    defaultPath: `modulink_${store.activePort}_${Date.now()}.log`,
-    filters: [{ name: "日志", extensions: ["log", "txt"] }],
-  });
-  if (!path) return;
-  await invoke("export_session_log", { port: store.activePort, path });
-  message.success("日志已保存");
-}
+function saveLog() { return savePortLog(store.activePort); }
 
 // ---------------- 发送区 ----------------
 const input = ref("");
@@ -188,7 +191,7 @@ function onKey(e: KeyboardEvent) {
         </template>
         切换终端字号
       </n-tooltip>
-      <n-button size="small" quaternary :disabled="!store.activePort" @click="saveLog">
+      <n-button size="small" quaternary :disabled="!store.activePort" :loading="savingLog" @click="saveLog">
         保存日志
       </n-button>
       <n-button size="small" quaternary :disabled="!store.activePort" @click="store.clear()">
@@ -209,9 +212,9 @@ function onKey(e: KeyboardEvent) {
         <AppIcon :icon="Cable" :size="14" />
         {{ g.name }}
         <small>{{ g.atPort }}{{ g.logPort ? " + " + g.logPort : "" }}</small>
-        <span class="tab-close" @click.stop="store.closeDeviceGroup(g.id)">
+        <button type="button" class="tab-close" :disabled="g.closing" :aria-label="`关闭设备 ${g.name}`" @click.stop="closeGroup(g.id)">
           <AppIcon :icon="X" :size="12" />
-        </span>
+        </button>
       </div>
       <div
         v-for="s in store.standaloneSessions"
@@ -222,9 +225,9 @@ function onKey(e: KeyboardEvent) {
       >
         <span class="dot" :class="{ on: s.connected }" />
         {{ s.port }} <small>@{{ s.baud }}</small>
-        <span class="tab-close" @click.stop="closeTab(s.port)">
+        <button type="button" class="tab-close" :disabled="s.closing" :aria-label="`关闭串口 ${s.port}`" @click.stop="closeTab(s.port)">
           <AppIcon :icon="X" :size="12" />
-        </span>
+        </button>
       </div>
     </div>
 
@@ -253,6 +256,7 @@ function onKey(e: KeyboardEvent) {
           <span v-if="store.activeProfile" class="kb-hint">
             {{ store.activeProfile.id === 'generic' ? '通用指令集' : '型号' }}: {{ store.activeProfile.name }}
           </span>
+          <span v-if="logSaveError" class="err" role="alert">{{ logSaveError }}；可重试保存。</span>
           <span v-if="store.lastError" class="err">
             <AppIcon :icon="AlertTriangle" :size="13" />
             {{ store.lastError }}
@@ -300,7 +304,7 @@ function onKey(e: KeyboardEvent) {
           </b>
           <div class="logpane-ops">
             <n-checkbox v-model:checked="logAutoScroll" size="small">滚动</n-checkbox>
-            <n-button size="tiny" quaternary @click="saveLogPane">保存</n-button>
+            <n-button size="tiny" quaternary :loading="savingLog" @click="saveLogPane">保存</n-button>
             <n-button size="tiny" quaternary @click="clearLogPane">清屏</n-button>
           </div>
         </div>
@@ -354,7 +358,8 @@ function onKey(e: KeyboardEvent) {
 .session-tab small { color: var(--text-secondary); font-weight: 400; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-tertiary); }
 .dot.on { background: var(--status-success); box-shadow: 0 0 5px var(--status-success); }
-.tab-close { color: var(--text-tertiary); padding: 0 2px; display: inline-flex; }
+.tab-close { background: transparent; border: 0; cursor: pointer; color: var(--text-tertiary); padding: 0 2px; display: inline-flex; }
+.tab-close:disabled { opacity: 0.5; cursor: wait; }
 .tab-close:hover { opacity: 1; color: var(--status-danger); }
 
 .body { position: relative; flex: 1; display: flex; min-height: 0; }

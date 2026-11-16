@@ -19,7 +19,8 @@ import AppIcon from "../AppIcon.vue";
 import { useSerialStore } from "../../stores/serial";
 import { useExecutionStore } from "../../stores/execution";
 import { useQuickCommandRunner } from "../../composables/useQuickCommandRunner";
-import type { QuickCommand } from "../../types";
+import { useAsyncAction } from "../../composables/useAsyncAction";
+import type { QuickCommand, QuickCmdsFile } from "../../types";
 
 defineProps<{ floating?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
@@ -135,32 +136,27 @@ function removeGroup() {
   store.persistQuickCmds();
 }
 
-async function importIni() {
-  const path = await openDialog({
-    filters: [{ name: "老工具配置", extensions: ["ini"] }],
-  });
-  if (!path) return;
-  try {
+const { busy: transferring, error: transferError, run: transfer } = useAsyncAction("配置文件操作失败", (error) => message.error(error));
+function importIni() {
+  return transfer(async () => {
+    const path = await openDialog({ filters: [{ name: "老工具配置", extensions: ["ini"] }] });
+    if (!path) return;
     await store.importLegacy(path as string);
     activeGroup.value = 0;
-    const f = store.quickCmds!;
-    const total = f.groups.reduce((n, g) => n + g.items.length, 0);
-    message.success(`导入成功：${f.groups.length} 组 / ${total} 条指令`);
-    for (const w of f.warnings) message.warning(w);
-  } catch (e) {
-    message.error(String(e));
-  }
-}
-
-async function exportIni() {
-  if (!store.quickCmds) return;
-  const path = await saveDialog({
-    defaultPath: `${store.quickCmds.name}_导出.ini`,
-    filters: [{ name: "老工具配置", extensions: ["ini"] }],
+    const file = store.quickCmds!;
+    message.success(`导入成功：${file.groups.length} 组 / ${file.groups.reduce((n, g) => n + g.items.length, 0)} 条指令`);
+    for (const warning of file.warnings) message.warning(warning);
   });
-  if (!path) return;
-  await store.exportLegacy(path as string);
-  message.success("已导出为老工具 ini 格式");
+}
+function exportIni() {
+  return transfer(async () => {
+    if (!store.quickCmds) return;
+    const data: QuickCmdsFile = JSON.parse(JSON.stringify(store.quickCmds));
+    const path = await saveDialog({ defaultPath: `${data.name}_导出.ini`, filters: [{ name: "老工具配置", extensions: ["ini"] }] });
+    if (!path) return;
+    await store.exportLegacy(path, data);
+    message.success("已导出为老工具 ini 格式");
+  });
 }
 
 async function sendQuick(c: QuickCommand) {
@@ -200,14 +196,15 @@ async function sendSelected(loop: boolean) {
     <div class="quick-head">
       <b>快捷指令</b>
       <div>
-        <n-button size="tiny" quaternary @click="importIni">导入老 ini</n-button>
-        <n-button size="tiny" quaternary :disabled="!store.quickCmds" @click="exportIni">
+        <n-button size="tiny" quaternary :disabled="transferring" @click="importIni">导入老 ini</n-button>
+        <n-button size="tiny" quaternary :disabled="!store.quickCmds || transferring" @click="exportIni">
           导出
         </n-button>
         <n-button v-if="floating" size="tiny" quaternary aria-label="关闭快捷指令面板" @click="emit('close')">关闭</n-button>
       </div>
     </div>
     <p v-if="floating" class="floating-hint">临时展开，关闭后继续查看完整终端。</p>
+    <p v-if="transferError" class="transfer-error" role="alert">{{ transferError }}；可重新操作。</p>
     <template v-if="store.quickCmds">
       <div class="group-bar">
         <n-tabs v-model:value="activeGroup" type="line" size="small" class="tabs-flex">
@@ -291,7 +288,7 @@ async function sendSelected(loop: boolean) {
     </template>
     <div v-else class="quick-empty">
       <p>还没有快捷指令</p>
-      <n-button size="small" type="primary" ghost @click="importIni">
+      <n-button size="small" type="primary" ghost :loading="transferring" @click="importIni">
         导入 ini 配置
       </n-button>
       <n-button size="small" quaternary @click="openEdit(-1)">或手动新建一条</n-button>
@@ -385,6 +382,7 @@ async function sendSelected(loop: boolean) {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 12px; color: var(--text-secondary); text-align: center; padding: 0 16px;
 }
+.transfer-error { color: var(--status-danger); font-size: 12px; overflow-wrap: anywhere; }
 .quick-empty small { color: var(--text-tertiary); line-height: 1.5; }
 
 .tabs-flex { flex: 1; min-width: 0; }

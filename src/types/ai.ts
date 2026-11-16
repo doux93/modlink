@@ -1,4 +1,4 @@
-import type { ExecutionTarget } from "../types";
+import type { ExecutionTarget, ManualContentLevel } from "../types";
 
 export interface ProposeStep {
   cmd: string;
@@ -31,4 +31,29 @@ export interface UiItem {
     details: string[];
     target?: AiExecutionTarget;
   };
+}
+
+export interface ManualSearchResult {
+  title?: string;
+  manual?: string;
+  models?: string[];
+  applicability?: "exact" | "series" | "generic" | "unknown";
+  content?: string;
+  contentLevel?: ManualContentLevel;
+  packId?: string;
+  packVersion?: string;
+  error?: string;
+  modelRestrictions?: string[];
+}
+
+export interface AtCommandAuthorization {
+  command: string;
+  authorized: boolean;
+  applicability?: "exact" | "generic" | "standard" | "runtime";
+  manual?: string;
+  topicId?: string;
+  packId?: string;
+  packVersion?: string;
+  reasonCode: string;
+  reason: string;
 }

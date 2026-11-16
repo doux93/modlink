@@ -15,10 +15,10 @@ import { useWorkspace } from "../../src/composables/useWorkspace";
 import { useUiPrefs } from "../../src/composables/useUiPrefs";
 import type { DiagFlow, DiagReport, KnowledgeStore } from "../../src/types";
 
-const mocks = vi.hoisted(() => ({ invoke: vi.fn(), save: vi.fn(), confirm: vi.fn() }));
+const mocks = vi.hoisted(() => ({ invoke: vi.fn(), save: vi.fn(), open: vi.fn(), confirm: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => vi.fn()) }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({ save: mocks.save }));
+vi.mock("@tauri-apps/plugin-dialog", () => ({ save: mocks.save, open: mocks.open }));
 let wrapper: VueWrapper | undefined;
 const flow = (): DiagFlow => ({ id: "network_attach", name: "入网连通性检查", kind: "checkup", verified: true, category: "network", execution_mode: "readonly", applies_to: [], steps: [{ id: "sim", title: "SIM 卡", command: "AT+CPIN?" }] } as unknown as DiagFlow);
 const report = (): DiagReport => ({ flow_id: "network_attach", flow_name: "入网连通性检查", overall: "fail", steps: [{ id: "sim", title: "SIM 卡", result: "fail", detail: "SIM 未就绪", reason: "未检测到 SIM", suggestion: "检查卡槽后复测", raw: ["+CME ERROR: 10"], collected: [], elapsed_ms: 20 }] } as DiagReport);
@@ -41,13 +41,13 @@ async function button(text: string) {
   expect(b, text).toBeTruthy(); return b!;
 }
 beforeEach(() => {
-  mocks.invoke.mockReset(); mocks.save.mockReset();
+  mocks.invoke.mockReset(); mocks.save.mockReset(); mocks.open.mockReset();
   mocks.invoke.mockImplementation(async (command, args) => {
     if (command === "list_serial_ports") return [{ name: "COM_A", description: "Test device" }, { name: "COM_B", description: "Log port" }];
     if (command === "open_serial") return { port: args.port, baud: args.baud, generation: 10 };
     if (command === "list_applicable_flows") return ["network_attach"];
     if (command === "run_diagnostic") return report();
-    if (command === "cancel_diagnostic" || command === "save_text_file") return null;
+    if (command === "cancel_diagnostic" || command === "save_text_file" || command === "export_session_log" || command === "export_legacy") return null;
     throw new Error(`Unexpected IPC: ${command}`);
   });
   useWorkspace().connectionOpen.value = false; useWorkspace().historyOpen.value = false;
@@ -206,4 +206,49 @@ it("shows failed knowledge loading and allows retry instead of an endless loadin
   (await button("重试")).click(); await flushPromises();
   expect(wrapper!.text()).toContain("摘要参考");
   expect(wrapper!.text()).not.toContain("读取失败");
+});
+
+it("exports the originally selected session even if the current device changes while choosing a file", async () => {
+  const serial = setup(Console, true);
+  let choose!: (path: string) => void;
+  mocks.save.mockReturnValue(new Promise(resolve => { choose = resolve; }));
+  (await button("保存日志")).click(); await flushPromises();
+  serial.activePort = "COM_B";
+  choose("original.log"); await flushPromises();
+  expect(mocks.invoke).toHaveBeenCalledWith("export_session_log", { port: "COM_A", sessionGeneration: 7, path: "original.log" });
+});
+
+it("retains logs after a failed export, shows a local error, and permits retry or cancellation", async () => {
+  const serial = setup(Console, true);
+  serial.framesByPort.COM_A = [{ seq: 1, ts: 1, port: 'COM_A', dir: 'rx', kind: 'response', text: 'retained' }];
+  mocks.save.mockResolvedValue("capture.log");
+  mocks.invoke.mockRejectedValueOnce(new Error("disk full"));
+  (await button("保存日志")).click(); await flushPromises();
+  expect(wrapper!.find('[role="alert"]').text()).toContain("disk full");
+  expect(serial.framesByPort.COM_A).toHaveLength(1);
+  mocks.invoke.mockResolvedValue(undefined);
+  (await button("保存日志")).click(); await flushPromises();
+  expect(wrapper!.find('[role="alert"]').exists()).toBe(false);
+  mocks.invoke.mockClear(); mocks.save.mockResolvedValue(null);
+  (await button("保存日志")).click(); await flushPromises();
+  expect(mocks.invoke).not.toHaveBeenCalled();
+});
+
+it("exports a command snapshot and keeps editing available after an export failure", async () => {
+  const serial = setup(Console);
+  serial.quickCmds = { schema: "modulink/quickcmds@1", name: "saved", groups: [{ name: "default", items: [{ text: "AT", format: "text", selected: false, append_newline: true, note: "" }] }], loop: { times: 1, interval_ms: 300 }, warnings: [] };
+  (await button("展开快捷指令")).click(); await flushPromises();
+  let choose!: (path: string) => void;
+  mocks.save.mockReturnValue(new Promise(resolve => { choose = resolve; }));
+  (await button("导出")).click(); await flushPromises();
+  serial.quickCmds.groups[0].items[0].text = "AT+CSQ";
+  mocks.invoke.mockRejectedValueOnce(new Error("write denied"));
+  choose("commands.ini"); await flushPromises();
+  const call = mocks.invoke.mock.calls.find(([command]) => command === "export_legacy")!;
+  expect(call[1].data.groups[0].items[0].text).toBe("AT");
+  expect(wrapper!.find('.transfer-error').text()).toContain("write denied");
+  expect(serial.quickCmds.groups[0].items[0].text).toBe("AT+CSQ");
+  mocks.save.mockResolvedValue("retry.ini"); mocks.invoke.mockResolvedValue(undefined);
+  (await button("导出")).click(); await flushPromises();
+  expect(wrapper!.find('.transfer-error').exists()).toBe(false);
 });

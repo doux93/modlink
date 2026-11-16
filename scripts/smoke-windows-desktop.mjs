@@ -125,6 +125,15 @@ try {
   await page.getByRole("button", { name: "展开快捷指令", exact: true }).click();
   await page.locator(".quick-text").filter({ hasText: "AT+CSQ" }).waitFor();
   checks.push("quick panel collapse preference survives reload", "quick commands preserved when panel is hidden");
+  await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("close_serial", { port: "MODULINK_SMOKE_ABSENT", sessionGeneration: 1 }));
+  checks.push("generation-bound close is idempotent for an absent port");
+  await page.getByRole("link", { name: "AI 助手", exact: true }).click();
+  await page.locator(".ai-head").getByRole("button", { name: "配置", exact: true }).click();
+  await page.getByPlaceholder("Base URL，如 https://onerouter.cmaiot.cn/v1", { exact: true }).fill("https://unsaved.invalid/v1");
+  await page.locator(".cfg-modal").getByRole("button", { name: "取消", exact: true }).click();
+  await page.locator(".cfg-modal").waitFor({ state: "hidden" });
+  assert((await page.locator(".ai-head").innerText()).includes("未配置 AI 服务"));
+  checks.push("cancelled AI settings do not alter the active configuration");
   assert.equal(await page.locator("#global-error-overlay").count(), 0);
   assert.deepEqual(errors, []);
   checks.push("history drawer", "quick-command disk persistence", "disconnected send disabled", "WebView reload");

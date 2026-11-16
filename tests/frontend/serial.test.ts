@@ -87,3 +87,69 @@ describe('serial store target isolation', () => {
     expect(store.sessions[0].connected).toBe(true);
   });
 });
+
+describe('closing device groups', () => {
+  function workspace() {
+    const store = useSerialStore();
+    store.sessions = ['COM_A', 'COM_LOG', 'COM_B'].map((port, index) => ({ port, generation: index + 1, baud: 115200, connected: true, profileId: 'generic', firmware: '' }));
+    store.deviceGroups = [{ id: 'device-a', name: 'A', atPort: 'COM_A', logPort: 'COM_LOG' }];
+    store.activePort = 'COM_A';
+    return store;
+  }
+  it.each(['COM_A', 'COM_LOG'])('retains partial state when %s fails and retries only the remaining connection', async (failedPort) => {
+    const store = workspace();
+    invoke.mockImplementation(async (command, args) => {
+      if (command !== 'close_serial') throw new Error('Unexpected IPC');
+      if (args.port === failedPort) throw new Error('close denied');
+    });
+    await expect(store.closeDeviceGroup('device-a')).rejects.toThrow('设备未完全关闭');
+    expect(store.deviceGroups).toHaveLength(1);
+    expect(store.sessions.find(s => s.port === failedPort)?.connected).toBe(true);
+    expect(store.sessions.find(s => s.port === (failedPort === 'COM_A' ? 'COM_LOG' : 'COM_A'))?.connected).toBe(false);
+    expect(invoke).toHaveBeenCalledTimes(2);
+    invoke.mockResolvedValue(undefined);
+    await store.closeDeviceGroup('device-a');
+    expect(invoke).toHaveBeenCalledTimes(3);
+    expect(invoke).toHaveBeenLastCalledWith('close_serial', { port: failedPort, sessionGeneration: failedPort === 'COM_A' ? 1 : 2 });
+    expect(store.deviceGroups).toHaveLength(0);
+    expect(store.sessions.map(s => s.port)).toEqual(['COM_B']);
+    expect(store.activePort).toBe('COM_B');
+  });
+  it('deduplicates closing and preserves a different device selected while awaiting IPC', async () => {
+    const store = workspace();
+    let finish!: () => void;
+    invoke.mockImplementation(async (_command, args) => args.port === 'COM_A' ? new Promise<void>(resolve => { finish = resolve; }) : undefined);
+    const first = store.closeDeviceGroup('device-a');
+    const second = store.closeDeviceGroup('device-a');
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    expect(store.deviceGroups[0].closing).toBe(true);
+    store.activePort = 'COM_B';
+    finish(); await Promise.all([first, second]);
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(store.activePort).toBe('COM_B');
+  });
+  it('keeps a reconnected member if it changes while the other member is closing', async () => {
+    const store = workspace();
+    let finish!: () => void;
+    invoke.mockImplementation(async (_command, args) => args.port === 'COM_LOG' ? new Promise<void>(resolve => { finish = resolve; }) : undefined);
+    const closing = store.closeDeviceGroup('device-a');
+    const outcome = expect(closing).rejects.toThrow('已保留新连接');
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    store.sessions[0] = { ...store.sessions[0], generation: 99, connected: true };
+    finish(); await outcome;
+    expect(store.deviceGroups).toHaveLength(1);
+    expect(store.sessions[0]).toMatchObject({ generation: 99, connected: true });
+  });
+  it('does not remove a newer standalone session when an older close finishes', async () => {
+    const store = workspace();
+    let finish!: () => void;
+    invoke.mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
+    const closing = store.closeSession('COM_B');
+    const outcome = expect(closing).rejects.toThrow('会话已变化');
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    store.sessions[2] = { ...store.sessions[2], generation: 100 };
+    finish(); await outcome;
+    expect(store.sessions[2]).toMatchObject({ generation: 100, connected: true });
+    expect(invoke).toHaveBeenCalledWith('close_serial', { port: 'COM_B', sessionGeneration: 3 });
+  });
+});

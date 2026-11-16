@@ -49,10 +49,13 @@ pub fn export_legacy(path: String, data: QuickCmdsFile) -> Result<(), String> {
 pub fn export_session_log(
     manager: State<'_, SerialManager>,
     port: String,
+    session_generation: u64,
     path: String,
 ) -> Result<usize, String> {
     let path = validate_output_path(&path, &["txt", "log"])?;
-    let frames = manager.get(&port)?.history_snapshot();
+    let frames = manager
+        .get_generation(&port, session_generation)?
+        .history_snapshot();
     let mut output = String::new();
     for frame in &frames {
         let direction = if frame.dir == "tx" { ">>" } else { "<<" };
