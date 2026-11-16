@@ -8,7 +8,7 @@ import {
   useDialog,
   useMessage,
 } from "naive-ui";
-import { ref, computed, nextTick, onMounted, onActivated, watch } from "vue";
+import { ref, computed, nextTick, onMounted, onActivated, onBeforeUnmount, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { RefreshCw, Settings } from "@lucide/vue";
 import AppIcon from "../components/AppIcon.vue";
@@ -21,6 +21,7 @@ import { useAiRequestGate, AiRequestTimeoutError, isRequestCancelled, type AiReq
 import { deviceContextKey } from "../utils/deviceContext";
 import type { AiExecutionTarget, UiItem } from "../types/ai";
 import { splitAtArguments } from "../utils/atArgs";
+import { requestAiChat } from "../utils/aiTransport";
 import type {
   AtCommandDoc,
   DiagReport,
@@ -128,6 +129,7 @@ function cancelActiveRequest(showNote = true) {
     void scrollBottom();
   }
 }
+onBeforeUnmount(() => cancelActiveRequest(false));
 
 const capabilities = ref<KnowledgeCapabilities | null>(null);
 const persistedCapabilityEvidence = ref("（当前没有持久化实测记录。）");
@@ -615,10 +617,11 @@ async function callLLM(
   };
   setRequestStage(request, "waiting");
   const resp = await waitForRequest(
-    invoke<any>("ai_chat", {
-      cfg: { base_url: settings.value.base_url, model: settings.value.model },
+    requestAiChat<any>(
+      { base_url: settings.value.base_url, model: settings.value.model },
       body,
-    }),
+      { signal: request.abortController.signal, deadline: request.deadline },
+    ),
     request
   );
   return resp.choices?.[0]?.message;

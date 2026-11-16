@@ -1,3 +1,4 @@
+pub mod ai_requests;
 pub mod execution;
 pub mod serial;
 

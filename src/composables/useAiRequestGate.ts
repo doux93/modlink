@@ -13,6 +13,7 @@ export interface AiRequestContext {
   cancelled: boolean;
   cancelledPromise: Promise<void>;
   resolveCancelled: () => void;
+  abortController: AbortController;
 }
 
 export class AiRequestCancelledError extends Error {
@@ -58,6 +59,7 @@ export function useAiRequestGate(
   });
 
   function beginRequest(stage: Exclude<AiRequestStage, "idle">, historyCheckpoint: number): AiRequestContext {
+    cancelActiveRequest();
     let resolveCancelled = () => {};
     const cancelledPromise = new Promise<void>((resolve) => {
       resolveCancelled = resolve;
@@ -74,6 +76,7 @@ export function useAiRequestGate(
       cancelled: false,
       cancelledPromise,
       resolveCancelled,
+      abortController: new AbortController(),
     };
     activeRequest = request;
     activeRequestId.value = request.id;
@@ -88,6 +91,7 @@ export function useAiRequestGate(
   }
 
   function assertRequestCurrent(request: AiRequestContext) {
+    if (request.abortController.signal.aborted) throw request.abortController.signal.reason;
     if (!requestIsCurrent(request)) throw new AiRequestCancelledError();
   }
 
@@ -97,9 +101,16 @@ export function useAiRequestGate(
   }
 
   async function waitForRequest<T>(promise: Promise<T>, request: AiRequestContext): Promise<T> {
+    // The caller may already have started IPC. Observe rejection even if this
+    // request expired before entering the race.
+    void promise.catch(() => {});
     assertRequestCurrent(request);
     const remaining = request.deadline - Date.now();
-    if (remaining <= 0) throw new AiRequestTimeoutError();
+    if (remaining <= 0) {
+      const error = new AiRequestTimeoutError();
+      request.abortController.abort(error);
+      throw error;
+    }
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const result = await Promise.race([
@@ -108,7 +119,11 @@ export function useAiRequestGate(
           throw new AiRequestCancelledError();
         }),
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new AiRequestTimeoutError()), remaining);
+          timer = setTimeout(() => {
+            const error = new AiRequestTimeoutError();
+            request.abortController.abort(error);
+            reject(error);
+          }, remaining);
         }),
       ]);
       assertRequestCurrent(request);
@@ -129,6 +144,7 @@ export function useAiRequestGate(
     const request = activeRequest;
     if (!request) return;
     request.cancelled = true;
+    request.abortController.abort(new AiRequestCancelledError());
     request.resolveCancelled();
     onCancel(request);
     finishRequest(request);

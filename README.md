@@ -21,6 +21,7 @@ simulator/        Python AT 模组模拟器（无真机开发/演示兜底）
 tests/fixtures/   老工具真实 ini 文件（导入器测试基准）
 tests/frontend/   前端设备绑定、AI 状态与执行历史回归测试
 tests/storage/    SQLite 事务存储测试（直接复用生产实现，不依赖 Tauri）
+tests/ai_transport/ AI 请求取消与超时测试（直接复用生产实现）
 docs/             文档
 ```
 
@@ -34,6 +35,7 @@ npm run build               # 前端类型检查 + 构建
 npm run check:bundle        # 首次加载的静态 JS 依赖总量预算
 cargo test --locked --manifest-path modulink-core/Cargo.toml
 cargo test --locked --manifest-path tests/storage/Cargo.toml
+cargo test --locked --manifest-path tests/ai_transport/Cargo.toml
 python -m pip install -r tools/requirements.txt
 python -m unittest discover -s tools -p "test_*.py"
 ```
@@ -54,6 +56,7 @@ Remove-Item Env:MODULINK_TEST_MANIFEST
 
 当前修复、存储迁移和实机验收步骤见 [修复说明](docs/repair-notes-2026-11-16.md)。
 页面拆分、按需加载和 Windows CI 改进见 [第二轮优化说明](docs/frontend-refactor-2026-11-16.md)。
+AI 网络取消与桌面验收流程见 [第三轮优化说明](docs/desktop-validation-2026-11-16.md)。
 
 ## 无真机联调
 
@@ -65,6 +68,11 @@ Remove-Item Env:MODULINK_TEST_MANIFEST
 ## 运行方式
 
 - 开发：双击 `dev.cmd`（或 `npm run tauri dev`）
-- 正式版：`src-tauri\target\release\modulink-studio.exe` 直接双击
+- 本地 release 构建：`src-tauri\target\release\modulink-studio.exe` 直接双击
   （打包命令 `npm run tauri build -- --no-bundle`；知识数据随资源打包，
   旧版本 exe 旁 `data/` 会在首次启动时迁移）
+- Windows 验收包：[Actions](https://github.com/doux93/modlink/actions/workflows/ci.yml)
+  中通过 CI 的运行会提供 `modulink-windows-preview` artifact。下载后完整解压，
+  保留 `data/`，双击 `modulink-studio.exe`；需要 Windows x64 与 WebView2 Runtime。
+  这是未签名的 debug 测试包，尚未完成真机验收，不是正式安装包。
+  同次运行的 `windows-desktop-smoke` artifact 包含页面截图及检查结果；产物保留 14 天。

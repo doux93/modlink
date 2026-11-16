@@ -12,6 +12,8 @@ dist
 dist-ssr
 /knowledge-pack/
 /artifacts/knowledge-packs/
+/artifacts/windows-preview/
+/artifacts/desktop-smoke/
 **/target/
 **/__pycache__/
 *.py[cod]

@@ -30,6 +30,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(SerialManager::default())
+        .manage(crate::core::ai_requests::AiRequests::default())
         .manage(crate::ipc::diagnostic::DiagnosticRuns(Mutex::new(
             HashMap::new(),
         )))
@@ -78,6 +79,8 @@ pub fn run() {
             crate::ipc::settings::get_settings,
             crate::ipc::settings::save_settings,
             crate::ipc::ai::ai_chat,
+            crate::ipc::ai::prepare_ai_request,
+            crate::ipc::ai::cancel_ai_request,
             crate::knowledge::manual::search_manuals,
             crate::knowledge::authorization::authorize_at_commands,
             crate::ipc::capabilities::probe_capabilities,
