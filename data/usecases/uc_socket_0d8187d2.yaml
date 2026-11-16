@@ -1,0 +1,41 @@
+schema: modulink/diagflow@1
+id: uc_socket_0d8187d2
+name: IPv6数据业务 · IPv6 PING业务
+kind: usecase
+category: socket
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+- mn316a
+steps:
+- id: s1
+  title: AT+NPING="2001:da8:8000:1:202:120:2:101",16,8000,1
+  send:
+  - AT+NPING="2001:da8:8000:1:202:120:2:101",16,8000,10
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NPING\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NPING（final={final}）
+    abort: true
+- id: s2
+  title: AT+NPING="ipv6.sjtu.edu.cn",16,8000,10
+  send:
+  - AT+NPING="ipv6.sjtu.edu.cn",16,8000,10
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NPING\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NPING（final={final}）
+    abort: true

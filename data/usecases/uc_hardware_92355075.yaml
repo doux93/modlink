@@ -1,0 +1,58 @@
+schema: modulink/diagflow@1
+id: uc_hardware_92355075
+name: 串口波特率
+kind: usecase
+category: hardware
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+steps:
+- id: s1
+  title: 配置波特率为115200bps，不返回OK，立即生效。
+  send:
+  - AT+NATSPEED=115200,0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 配置波特率为115200bps并保存NV，不返回OK，立即生效。
+  send:
+  - AT+NATSPEED=115200,0,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 配置波特率自适应，重启生效。
+  send:
+  - AT+NATSPEED=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 重启
+  send:
+  - AT+NRB
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

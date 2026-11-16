@@ -1,0 +1,172 @@
+schema: modulink/diagflow@1
+id: uc_socket_11a34303
+name: 服务器模式 · TCP服务器
+kind: usecase
+category: socket
+source: MR880A 通信流程示例
+verified: false
+applies_to:
+- mr880a
+steps:
+- id: s1
+  title: 建立第0路监听，TCP、IPV4模式，监听端口1
+  send:
+  - AT+MIPLISTEN=0,"TCP",1,"IP"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPLISTEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPLISTEN（final={final}）
+    abort: true
+- id: s2
+  title: 第0路connect建立连接（客户端），连接服务器端口1。
+  send:
+  - AT+MIPOPEN=0,"TCP","127.0.0.1",1,60
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPURC\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPURC（final={final}）
+    abort: true
+- id: s3
+  title: 0#发送数据（客户端发送）
+  send:
+  - AT+MIPSEND=0,,"TEST"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPSEND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPSEND（final={final}）
+    abort: true
+- id: s4
+  title: 1#发送数据（服务器端发送）
+  send:
+  - AT+MIPSEND=1,,"TESTBACK"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPSEND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPSEND（final={final}）
+    abort: true
+- id: s5
+  title: 1#切换缓存模式（服务器端）
+  send:
+  - AT+MIPMODE=1,2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: 0#发送数据（客户端发送）
+  send:
+  - AT+MIPSEND=0,,"123456789"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPSEND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPSEND（final={final}）
+    abort: true
+- id: s7
+  title: 1#查询缓存长度（服务器端）
+  send:
+  - AT+MIPRD=1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPRD\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPRD（final={final}）
+    abort: true
+- id: s8
+  title: 1#读取缓存（服务器端）
+  send:
+  - AT+MIPRD=1,9
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPRD\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPRD（final={final}）
+    abort: true
+- id: s9
+  title: 查询服务器状态
+  send:
+  - AT+MIPSRVSTATE?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPSRVSTATE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPSRVSTATE（final={final}）
+    abort: true
+- id: s10
+  title: 查询服务器已建立连接地址
+  send:
+  - AT+MIPSRVSTATE=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPSRVSTATE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPSRVSTATE（final={final}）
+    abort: true
+- id: s11
+  title: 关闭服务器
+  send:
+  - AT+MIPSRVCLOSE=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPSRVCLOSE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPSRVCLOSE（final={final}）
+    abort: true

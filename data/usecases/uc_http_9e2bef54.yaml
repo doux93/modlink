@@ -1,0 +1,39 @@
+schema: modulink/diagflow@1
+id: uc_http_9e2bef54
+name: HTTP下载文件 · 断点续传
+kind: usecase
+category: http
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: www.baidu.com:80/","/test.txt",1024,"bytes=0-4095"
+  send:
+  - 'AT+MHTTPDLFILE="http:'
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MHTTPDLFILE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MHTTPDLFILE（final={final}）
+    abort: true
+- id: s2
+  title: www.baidu.com:80/","/test.txt",1024,,1
+  send:
+  - 'AT+MHTTPDLFILE="http:'
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MHTTPDLFILE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MHTTPDLFILE（final={final}）
+    abort: true

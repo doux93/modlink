@@ -1,0 +1,34 @@
+schema: modulink/diagflow@1
+id: uc_hardware_51509098
+name: 串口波特率
+kind: usecase
+category: hardware
+source: ML302S 通信流程示例
+verified: false
+applies_to:
+- ml302s
+steps:
+- id: s1
+  title: 配置波特率为115200bps，立即生效，保存NV。
+  send:
+  - AT+IPR=115200
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 保存波特率配置到NV。
+  send:
+  - AT&W
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

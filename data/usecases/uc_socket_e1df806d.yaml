@@ -1,0 +1,40 @@
+schema: modulink/diagflow@1
+id: uc_socket_e1df806d
+name: UDP/TCP休眠策略
+kind: usecase
+category: socket
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+steps:
+- id: s1
+  title: 删除0# socket。
+  send:
+  - AT+NSOCL=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NSOCLI\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NSOCLI（final={final}）
+    abort: true
+- id: s2
+  title: 关闭1# socket。
+  send:
+  - AT+NSOCL=1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NSOCLI\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NSOCLI（final={final}）
+    abort: true

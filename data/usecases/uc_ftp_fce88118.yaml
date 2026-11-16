@@ -1,0 +1,36 @@
+schema: modulink/diagflow@1
+id: uc_ftp_fce88118
+name: FTP示例 · 建立FTP普通连接
+kind: usecase
+category: ftp
+source: FTP用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 配置连接方式为FTP通常连接
+  send:
+  - AT+MFTPCFG=0,"ssl",0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 建立FTP连接
+  send:
+  - AT+MFTPCONN=0,"<FTP_SERVER_IP>","<FTP_USER>","<FTP_PASSWORD>",21
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPCONN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPCONN（final={final}）
+    abort: true

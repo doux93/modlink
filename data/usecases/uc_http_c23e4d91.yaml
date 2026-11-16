@@ -1,0 +1,106 @@
+schema: modulink/diagflow@1
+id: uc_http_c23e4d91
+name: API-创建LWM2M设备
+kind: usecase
+category: http
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: api.heclouds.com/"
+  send:
+  - 'AT+HTTPCREATE="http:'
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+HTTPCREATE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +HTTPCREATE（final={final}）
+    abort: true
+- id: s2
+  title: APIKey需替换为实际值。
+  send:
+  - 'AT+HTTPHEADER=0,"api-key:ChangeForYourOwnKey\r\nContent-Type:application/json\r\nConnection: Close\r\n"'
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 'AT+HTTPCONTENT=0,"{"title": "865820030265172"\x2C"'
+  send:
+  - 'AT+HTTPCONTENT=0,"{"title": "865820030265172"\x2C"desc": "865820030265172"\x2C"protocol": "LWM2M"\x2C"auth_info":
+    {"865820030265172": "460043783403288"}}"'
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 发送post请求，创建设备。
+  send:
+  - AT+HTTPSEND=0,1,"/devices"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+HTTPNMIH\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +HTTPNMIH（final={final}）
+    abort: true
+- id: s5
+  title: 创建成功后登陆
+  send:
+  - AT+MIPLCREATEEX="nbiotbt.heclouds.com:5683",1,""
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPLCREATEEX\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPLCREATEEX（final={final}）
+    abort: true
+- id: s6
+  title: 添加object
+  send:
+  - AT+MIPLADDOBJ=0,3200,1,"1",0,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s7
+  title: 登陆OneNET
+  send:
+  - AT+MIPLOPEN=0,3000,30
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPLEVENT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPLEVENT（final={final}）
+    abort: true

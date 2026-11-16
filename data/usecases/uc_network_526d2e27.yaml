@@ -1,0 +1,74 @@
+schema: modulink/diagflow@1
+id: uc_network_526d2e27
+name: 锁定BAND
+kind: usecase
+category: network
+source: ML307H 通信流程示例
+verified: false
+applies_to:
+- ml307h
+- ml307n
+steps:
+- id: s1
+  title: 关闭协议栈
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 锁定UE到B8
+  send:
+  - AT+MBAND=8
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 关闭协议栈
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 打开协议栈
+  send:
+  - AT+CFUN=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 当前配置为B8
+  send:
+  - AT+MBAND?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MBAND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MBAND（final={final}）
+    abort: true

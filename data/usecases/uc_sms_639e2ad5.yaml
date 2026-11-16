@@ -1,0 +1,34 @@
+schema: modulink/diagflow@1
+id: uc_sms_639e2ad5
+name: 短信功能配置 · 短信默认配置
+kind: usecase
+category: sms
+source: ML307B 通信流程示例
+verified: false
+applies_to:
+- ml307b
+steps:
+- id: s1
+  title: 配置接收到短信时自动上报
+  send:
+  - AT+CNMI=2,1,0,0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: CSMP默认配置，配置其它参数可能出现网侧被拒导致发送失败。
+  send:
+  - AT+CSMP=1,,0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

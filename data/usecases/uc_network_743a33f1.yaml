@@ -1,0 +1,135 @@
+schema: modulink/diagflow@1
+id: uc_network_743a33f1
+name: 短信功能配置 · NR驻网配置IMS域激活/去激活
+kind: usecase
+category: network
+source: MF308C 通信流程示例
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 打开IMS域配置开关
+  send:
+  - AT+EIMSCFG=1,0,0,0,1,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+CFUN=4
+  send:
+  - AT+CFUN=4
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 重启网络协议栈
+  send:
+  - AT+CFUN=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 查询IMS域注册情况
+  send:
+  - AT+CIREG?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CIREG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CIREG（final={final}）
+    abort: true
+- id: s5
+  title: 配置第二路PDP上下文,使用该路承载数据业务
+  send:
+  - AT+CGDCONT=2,"ipv4v6"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: 激活PDP，建立应用层拨号连接。
+  send:
+  - AT+MIPCALL=1,2
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s7
+  title: 关闭IMS域配置开关
+  send:
+  - AT+EIMSCFG=0,0,0,0,0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s8
+  title: AT+CFUN=4
+  send:
+  - AT+CFUN=4
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s9
+  title: 重启网络协议栈
+  send:
+  - AT+CFUN=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s10
+  title: 配置第一路PDP上下文
+  send:
+  - AT+CGDCONT=1,"IPV4V6"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

@@ -1,0 +1,56 @@
+schema: modulink/diagflow@1
+id: uc_socket_0fc42e22
+name: UDP/TCP数据发送 · TCP数据发送
+kind: usecase
+category: socket
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+- mn316a
+steps:
+- id: s1
+  title: 创建TCP socket，并绑定本地端口6003，开启数据到达自动上报+NSONMI，需要+NSORF命令读取数据。
+  send:
+  - AT+NSOCR="STREAM",6,6003,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NSOCR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NSOCR（final={final}）
+    abort: true
+- id: s2
+  title: 连接远程地址114.116.144.151,2008。
+  send:
+  - AT+NSOCO=1,114.116.144.151,2008
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NSONMI\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NSONMI（final={final}）
+    abort: true
+- id: s3
+  title: 发送数据0123456789，发送序号为4。
+  send:
+  - AT+NSOSD=1,10,30313233343536373839,,4
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NSOSD\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NSOSD（final={final}）
+    abort: true

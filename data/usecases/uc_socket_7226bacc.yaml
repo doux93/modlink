@@ -1,0 +1,159 @@
+schema: modulink/diagflow@1
+id: uc_socket_7226bacc
+name: IPv6入网配置 · 确认IPV6入网
+kind: usecase
+category: socket
+source: 通信流程示例
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 确认模组已附着上网络
+  send:
+  - AT+CEREG?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CEREG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CEREG（final={final}）
+    abort: true
+- id: s2
+  title: 确认PDP已激活，并已获取IPv4和IPv6地址。
+  send:
+  - AT+CGPADDR
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGPADDR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGPADDR（final={final}）
+    abort: true
+- id: s3
+  title: AT+CGCONTRDP
+  send:
+  - AT+CGCONTRDP
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGCONTRDP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGCONTRDP（final={final}）
+    abort: true
+- id: s4
+  title: AT+CFUN?
+  send:
+  - AT+CFUN?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CFUN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CFUN（final={final}）
+    abort: true
+- id: s5
+  title: 建立业务连接
+  send:
+  - AT+MIPCALL=1,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s6
+  title: 确认模组已附着上网络
+  send:
+  - AT+CEREG?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CEREG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CEREG（final={final}）
+    abort: true
+- id: s7
+  title: 确认PDP已激活，并已获取IPv6地址。
+  send:
+  - AT+CGPADDR
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGPADDR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGPADDR（final={final}）
+    abort: true
+- id: s8
+  title: AT+CGCONTRDP
+  send:
+  - AT+CGCONTRDP
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGCONTRDP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGCONTRDP（final={final}）
+    abort: true
+- id: s9
+  title: AT+CFUN?
+  send:
+  - AT+CFUN?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CFUN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CFUN（final={final}）
+    abort: true
+- id: s10
+  title: 建立业务连接
+  send:
+  - AT+MIPCALL=1,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true

@@ -1,0 +1,34 @@
+schema: modulink/diagflow@1
+id: uc_socket_cf7199a1
+name: IPv6数据业务 · IPv6 PING业务
+kind: usecase
+category: socket
+source: MN328 通信流程示例
+verified: false
+applies_to:
+- mn328
+steps:
+- id: s1
+  title: AT+ZPING="2A02:C207:3005:9207::6",16,4,10,100
+  send:
+  - AT+ZPING="2A02:C207:3005:9207::6",16,4,10,100
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+ZPING="www.deepspace6.net",16,4,10,100
+  send:
+  - AT+ZPING="www.deepspace6.net",16,4,10,100
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

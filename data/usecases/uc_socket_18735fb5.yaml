@@ -1,0 +1,61 @@
+schema: modulink/diagflow@1
+id: uc_socket_18735fb5
+name: UDP/TCP数据接收 · TCP普通模式
+kind: usecase
+category: socket
+source: ML302A 通信流程示例
+verified: false
+applies_to:
+- m5311-e
+- ml302a
+- ml302s
+- mn316a
+- mn318
+- mn326a
+- mr880a
+steps:
+- id: s1
+  title: 1#建立TCP连接，普通接收模式。
+  send:
+  - AT+MIPOPEN=1,"TCP","120.27.12.119",2016,60,0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPOPEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPOPEN（final={final}）
+    abort: true
+- id: s2
+  title: 1#发送数据11Bytes。
+  send:
+  - AT+MIPSEND=1,11,"12345678900"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPSEND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPSEND（final={final}）
+    abort: true
+- id: s3
+  title: 1#关闭连接。
+  send:
+  - AT+MIPCLOSE=1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCLOSE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCLOSE（final={final}）
+    abort: true

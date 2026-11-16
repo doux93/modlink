@@ -1,0 +1,51 @@
+schema: modulink/diagflow@1
+id: uc_mqtt_8e1c1f7b
+name: 缓存模式 · 创建实例和参数配置
+kind: usecase
+category: mqtt
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 120.27.12.119:10080"
+  send:
+  - 'AT+MHTTPCREATE="http:'
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MHTTPCREATE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MHTTPCREATE（final={final}）
+    abort: true
+- id: s2
+  title: 设置缓存模式
+  send:
+  - AT+MHTTPCFG="cached",0,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: AT+MHTTPCFG="cached",0
+  send:
+  - AT+MHTTPCFG="cached",0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MHTTPCFG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MHTTPCFG（final={final}）
+    abort: true

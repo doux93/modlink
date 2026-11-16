@@ -1,0 +1,82 @@
+schema: modulink/diagflow@1
+id: uc_network_43f5a104
+name: 网络配置 · PDN激活与去激活
+kind: usecase
+category: network
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+steps:
+- id: s1
+  title: 配置PDP上下文。
+  send:
+  - AT+CGDCONT=1,"IP"," iot.10086.cn"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 激活PDP。
+  send:
+  - AT+CGACT=1,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: AT+CGATT=0
+  send:
+  - AT+CGATT=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: AT+CFUN=0
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 去激活<cid>对应的PDP，适用于所有情况。
+  send:
+  - AT+CGACT=0,<cid>
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: 去激活所有PDP，适用于所有情况。
+  send:
+  - AT+CGATT=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

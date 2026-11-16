@@ -1,0 +1,36 @@
+schema: modulink/diagflow@1
+id: uc_network_34691442
+name: 清除存储频点
+kind: usecase
+category: network
+source: 通信流程示例
+verified: false
+applies_to:
+- ml302a
+- mn316-s
+- mn319-a
+steps:
+- id: s1
+  title: AT+CFUN=0
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+MCSEARFCN
+  send:
+  - AT+MCSEARFCN
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

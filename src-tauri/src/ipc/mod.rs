@@ -1,0 +1,12 @@
+pub mod ai;
+pub mod capabilities;
+pub mod common;
+pub mod db;
+pub mod diagnostic;
+pub mod execution;
+pub mod knowledge_cmds;
+pub mod legacy;
+pub mod log_analysis;
+pub mod serial;
+pub mod settings;
+pub mod stress;

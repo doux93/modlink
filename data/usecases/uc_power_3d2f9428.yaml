@@ -1,0 +1,40 @@
+schema: modulink/diagflow@1
+id: uc_power_3d2f9428
+name: 深睡眠 · 深睡眠命令控制
+kind: usecase
+category: power
+source: MN316-S 通信流程示例
+verified: false
+applies_to:
+- m5311-e
+- ml307b
+- mn316-s
+- mn316a
+- mn326
+- mn326a
+- mn327
+steps:
+- id: s1
+  title: AT+MLPMCFG="sleepmode",0,0
+  send:
+  - AT+MLPMCFG="sleepmode",0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+MLPMCFG="sleepmode",2,0
+  send:
+  - AT+MLPMCFG="sleepmode",2,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

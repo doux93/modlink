@@ -1,0 +1,64 @@
+schema: modulink/diagflow@1
+id: uc_sms_01e51ce1
+name: PDU短信收发
+kind: usecase
+category: sms
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+steps:
+- id: s1
+  title: 设置PDU模式，目前只支持PDU格式。
+  send:
+  - AT+CMGF=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 短信发送前，动态关闭STANDBY模式，该模式对短信输入存在影响。
+  send:
+  - AT+STANDBY=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: PDU模式发送短信
+  send:
+  - AT+CMGS=25
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGS（final={final}）
+    abort: true
+- id: s4
+  title: 短信发送完毕后，再动态开启STANDBY模式。
+  send:
+  - AT+STANDBY=1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMT（final={final}）
+    abort: true

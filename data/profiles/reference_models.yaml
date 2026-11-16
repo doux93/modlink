@@ -1,0 +1,296 @@
+# 由离线手册索引确认存在、但尚未完成实机命令集验证的型号画像。
+# defaults 会在加载时合并到每个 profiles 条目；单型号字段覆盖默认值。
+schema: modulink/profile-catalog@1
+detect:
+  command: "AT+CGMM"
+  priority: 20
+  allow_hyphen_suffix: true
+defaults:
+  schema: modulink/profile@1
+  vendor: "中移物联"
+  family: cellular
+  capabilities: [cellular]
+  support_level: reference
+  ports:
+    - role: at
+      default_baud: 115200
+  line_ending: "\r\n"
+  urc_patterns:
+    - id: cereg_urc
+      pattern: '^\+CEREG: (?<stat>\d+)(,.*)?$'
+      label: "网络注册"
+      severity_field: stat
+      severity_map: { "0": error, "1": info, "2": warning, "3": error, "5": info }
+    - id: cpin_urc
+      pattern: '^\+CPIN: (?<state>.+)$'
+      label: "SIM 状态"
+      severity: info
+  at_commands:
+    - cmd: "AT+CSQ"
+      syntax: "AT+CSQ"
+      category: network
+      risk: none
+      doc: "查询信号质量。rssi 0-31，99 表示无信号。"
+    - cmd: "AT+CPIN"
+      syntax: "AT+CPIN?"
+      category: sim
+      risk: none
+      doc: "查询 SIM 状态。"
+    - cmd: "AT+CEREG"
+      syntax: "AT+CEREG? / AT+CEREG=<n>"
+      category: network
+      risk: none
+      doc: "查询网络注册状态或设置状态变化上报。"
+    - cmd: "AT+COPS"
+      syntax: "AT+COPS? / AT+COPS=?"
+      category: network
+      risk: none
+      doc: "查询当前运营商或扫描可用网络。"
+    - cmd: "AT+CGDCONT"
+      syntax: 'AT+CGDCONT=<cid>,"IP","<APN>"'
+      category: pdp
+      risk: none
+      doc: "定义 PDP 上下文。"
+    - cmd: "AT+CGACT"
+      syntax: "AT+CGACT=<state>,<cid>"
+      category: pdp
+      risk: none
+      doc: "激活或去激活 PDP 上下文。"
+    - cmd: "AT+CGPADDR"
+      syntax: "AT+CGPADDR=<cid>"
+      category: pdp
+      risk: none
+      doc: "查询 PDP 分配的 IP 地址。"
+    - cmd: "AT+CEER"
+      syntax: "AT+CEER"
+      category: debug
+      risk: none
+      doc: "查询最近一次错误的扩展原因。"
+  diagnostics: [network_attach]
+  error_code_tables: [cme_standard, cms_standard]
+  intents:
+    - phrases: ["查信号", "信号强度"]
+      sequence: ["AT+CSQ"]
+    - phrases: ["查卡", "SIM卡状态"]
+      sequence: ["AT+CPIN?"]
+    - phrases: ["注册状态", "入网了吗"]
+      sequence: ["AT+CEREG?", "AT+COPS?"]
+
+profiles:
+  - id: ml302a
+    name: "ML302A (LTE Cat1)"
+    family: cat1
+    model_codes: [ML302A]
+    series: ML302
+    capabilities: [cellular, lte-cat1]
+  - id: ml302s
+    name: "ML302S (LTE Cat1)"
+    family: cat1
+    model_codes: [ML302S]
+    series: ML302
+    capabilities: [cellular, lte-cat1]
+
+  - id: ml305a
+    name: "ML305A (LTE Cat4)"
+    family: cat4
+    model_codes: [ML305A]
+    series: ML305
+    capabilities: [cellular, lte-cat4]
+  - id: ml305m
+    name: "ML305M (LTE Cat4)"
+    family: cat4
+    model_codes: [ML305M]
+    series: ML305
+    capabilities: [cellular, lte-cat4]
+  - id: ml305u
+    name: "ML305U (LTE Cat4)"
+    family: cat4
+    model_codes: [ML305U]
+    series: ML305
+    capabilities: [cellular, lte-cat4]
+
+  - id: ml307
+    name: "ML307 (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+  - id: ml307a
+    name: "ML307A (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307A]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+  - id: ml307b
+    name: "ML307B (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307B]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+  - id: ml307c
+    name: "ML307C (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307C]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+  - id: ml307g
+    name: "ML307G (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307G]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+  - id: ml307h
+    name: "ML307H (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307H]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+  - id: ml307m
+    name: "ML307M (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307M]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+  - id: ml307n
+    name: "ML307N (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307N]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+  - id: ml307s
+    name: "ML307S (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307S]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+  - id: ml307x
+    name: "ML307X (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307X]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+  - id: ml307y
+    name: "ML307Y (LTE Cat1)"
+    family: cat1
+    model_codes: [ML307Y]
+    series: ML307
+    capabilities: [cellular, lte-cat1]
+
+  - id: ml551z
+    name: "ML551Z"
+    model_codes: [ML551Z]
+    series: ML551
+
+  - id: mn316
+    name: "MN316 (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN316]
+    series: MN316
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn316_s
+    name: "MN316-S (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN316-S]
+    series: MN316
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn316a
+    name: "MN316A (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN316A]
+    series: MN316
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn318
+    name: "MN318 (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN318]
+    series: MN318
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn319
+    name: "MN319 (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN319]
+    series: MN319
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn319_a
+    name: "MN319-A (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN319-A]
+    series: MN319
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn319a
+    name: "MN319A (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN319A]
+    series: MN319
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn326
+    name: "MN326 (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN326]
+    series: MN326
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn326a
+    name: "MN326A (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN326A]
+    series: MN326
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn326e
+    name: "MN326E (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN326E]
+    series: MN326
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn327
+    name: "MN327 (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN327]
+    series: MN327
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn328
+    name: "MN328 (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN328]
+    series: MN328
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn328_b
+    name: "MN328-B (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN328-B]
+    series: MN328
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn328_brz15
+    name: "MN328-BRZ15 (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN328-BRZ15]
+    series: MN328
+    capabilities: [cellular, nb-iot, lwm2m]
+  - id: mn328_bx
+    name: "MN328-BX (NB-IoT)"
+    family: nb-iot
+    model_codes: [MN328-BX]
+    series: MN328
+    capabilities: [cellular, nb-iot, lwm2m]
+
+  - id: mr380m
+    name: "MR380M"
+    model_codes: [MR380M]
+    series: MR380
+  - id: mr380r
+    name: "MR380R"
+    model_codes: [MR380R]
+    series: MR380
+  - id: mr385m
+    name: "MR385M"
+    model_codes: [MR385M]
+    series: MR385
+  - id: mr581a
+    name: "MR581A"
+    model_codes: [MR581A]
+    series: MR581
+  - id: mr880a
+    name: "MR880A (5G)"
+    family: 5g
+    model_codes: [MR880A]
+    series: MR880
+    capabilities: [cellular, 5g, tcp-ip]

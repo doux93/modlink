@@ -1,0 +1,71 @@
+schema: modulink/diagflow@1
+id: uc_socket_1d36533b
+name: IPv6入网配置 · 确认IPV6入网
+kind: usecase
+category: socket
+source: M5311-E 通信流程示例
+verified: false
+applies_to:
+- m5311-e
+- mn327
+steps:
+- id: s1
+  title: 确认模组已附着上网络
+  send:
+  - AT+CEREG?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CEREG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CEREG（final={final}）
+    abort: true
+- id: s2
+  title: AT+CGCONTRDP
+  send:
+  - AT+CGCONTRDP
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGCONTRDP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGCONTRDP（final={final}）
+    abort: true
+- id: s3
+  title: 确认模组已附着上网络
+  send:
+  - AT+CEREG?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CEREG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CEREG（final={final}）
+    abort: true
+- id: s4
+  title: AT+CGCONTRDP
+  send:
+  - AT+CGCONTRDP
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGCONTRDP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGCONTRDP（final={final}）
+    abort: true

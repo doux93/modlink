@@ -1,0 +1,61 @@
+schema: modulink/diagflow@1
+id: uc_socket_ca37e044
+name: UDP/TCP数据发送 · TCP数据发送
+kind: usecase
+category: socket
+source: M5310-E 通信流程示例
+verified: false
+applies_to:
+- m5310-e
+steps:
+- id: s1
+  title: TCP建立连接，开启数据自动上报。
+  send:
+  - AT+NSOCR="STREAM",6,4,2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 发起连接
+  send:
+  - AT+NSOCO=0,"120.27.12.119",2045
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 普通发送
+  send:
+  - AT+NSOSD=0,2,0123
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 带空口回传功能
+  send:
+  - AT+NSOSD=0,2,0123,0,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NSOSTR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NSOSTR（final={final}）
+    abort: true

@@ -1,0 +1,78 @@
+# 3GPP TS 27.007 标准 +CME ERROR 错误码表（常用子集）
+# 厂商/型号扩展码请另建文件叠加（error_code_tables 引用顺序决定覆盖关系）
+schema: modulink/error_codes@1
+kind: error_codes
+code_type: cme
+applies_to: "*"
+entries:
+  - code: 3
+    meaning: "操作不允许"
+    causes: ["指令在当前状态下不可用", "SIM 未就绪就执行了需要 SIM 的操作"]
+    suggestions: ["先 AT+CPIN? 确认 SIM 就绪", "检查指令的前置条件"]
+    severity: error
+    related_at: ["AT+CPIN?"]
+  - code: 4
+    meaning: "操作不支持"
+    causes: ["该型号固件不支持此指令或参数"]
+    suggestions: ["核对该型号 AT 手册确认支持性", "AT+CGMR 检查固件版本"]
+    severity: error
+  - code: 10
+    meaning: "SIM 卡未插入"
+    causes: ["卡未插好或卡座接触不良", "SIM 供电异常", "卡损坏"]
+    suggestions: ["重新插拔 SIM 卡", "测量 SIM_VDD 供电", "换一张卡对比验证"]
+    severity: error
+    related_at: ["AT+CPIN?"]
+  - code: 11
+    meaning: "需要 SIM PIN 码"
+    causes: ["SIM 卡启用了 PIN 码保护"]
+    suggestions: ["AT+CPIN=<pin> 解锁", "或用手机取消该卡的 PIN 保护"]
+    severity: warning
+    related_at: ["AT+CPIN=1234"]
+  - code: 12
+    meaning: "需要 SIM PUK 码"
+    causes: ["PIN 码连续输错 3 次，卡已锁定"]
+    suggestions: ["联系运营商获取 PUK 码", 'AT+CPIN="<puk>","<新pin>" 解锁']
+    severity: error
+  - code: 13
+    meaning: "SIM 卡故障"
+    causes: ["卡损坏", "卡座接触不良"]
+    suggestions: ["重新插拔", "换卡对比验证"]
+    severity: error
+  - code: 14
+    meaning: "SIM 卡忙"
+    causes: ["SIM 初始化未完成（常见于开机头几秒）"]
+    suggestions: ["等待 2-5 秒后重试", "开机后先轮询 AT+CPIN? 直到 READY"]
+    severity: warning
+  - code: 15
+    meaning: "SIM 卡错误"
+    causes: ["卡片与模组不兼容", "卡损坏"]
+    suggestions: ["换卡验证", "确认卡类型（普通卡/物联网卡）"]
+    severity: error
+  - code: 16
+    meaning: "密码错误"
+    causes: ["PIN/PUK 输入错误"]
+    suggestions: ["核对密码；注意 PIN 连续错 3 次会锁卡"]
+    severity: error
+  - code: 30
+    meaning: "无网络服务"
+    causes: ["信号弱或无覆盖", "天线未接", "频段不匹配"]
+    suggestions: ["AT+CSQ 查信号", "检查天线", "AT+COPS=? 扫网看能搜到哪些网络"]
+    severity: error
+    related_at: ["AT+CSQ", "AT+COPS=?"]
+  - code: 100
+    meaning: "未知错误"
+    causes: ["模组内部错误，原因未归类"]
+    suggestions: ["AT+CEER 查询扩展错误原因", "复现并抓完整日志"]
+    severity: error
+    related_at: ["AT+CEER"]
+  - code: 148
+    meaning: "未指明的 GPRS 错误（最常见于 PDP 激活失败）"
+    causes: ["APN 配置错误或为空", "SIM 未开通数据套餐/已停机", "网络侧拒绝", "未注册就激活 PDP"]
+    suggestions: ["AT+CGDCONT? 检查 APN（中移物联卡常用 cmiot）", "AT+CEREG? 确认已注册", "确认卡套餐状态"]
+    severity: error
+    related_at: ["AT+CGDCONT?", "AT+CEREG?"]
+  - code: 149
+    meaning: "PDP 鉴权失败"
+    causes: ["APN 用户名/密码错误", "专网卡鉴权配置缺失"]
+    suggestions: ["核对 APN 鉴权参数（专网卡向运营商索取）"]
+    severity: error

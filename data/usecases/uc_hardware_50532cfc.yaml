@@ -1,0 +1,57 @@
+schema: modulink/diagflow@1
+id: uc_hardware_50532cfc
+name: LED灯
+kind: usecase
+category: hardware
+source: 通信流程示例
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 使能网络状态灯
+  send:
+  - AT+MLED=0,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 使能模组状态灯
+  send:
+  - AT+MLED=1,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 使能网络状态灯
+  send:
+  - AT+MLED=0,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 使能模组状态灯
+  send:
+  - AT+MLED=1,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

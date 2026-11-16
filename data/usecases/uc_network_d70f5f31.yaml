@@ -1,0 +1,51 @@
+schema: modulink/diagflow@1
+id: uc_network_d70f5f31
+name: 驻网自动同步网络时间
+kind: usecase
+category: network
+source: MF308C 通信流程示例
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: AT+CCLK?
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CCLK\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CCLK（final={final}）
+    abort: true
+- id: s2
+  title: 等待网络注册成功
+  send:
+  - AT+COPS?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+COPS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +COPS（final={final}）
+    abort: true
+- id: s3
+  title: AT+CCLK?
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

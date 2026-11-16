@@ -1,0 +1,58 @@
+schema: modulink/diagflow@1
+id: uc_hardware_33203667
+name: SIM卡使能及热插拔
+kind: usecase
+category: hardware
+source: MR880A 通信流程示例
+verified: false
+applies_to:
+- mr880a
+steps:
+- id: s1
+  title: 去激活SIM硬卡,执行改操作将引起掉网
+  send:
+  - AT+MUECONFIG="simenable",0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 激活SIM硬卡
+  send:
+  - AT+MUECONFIG="simenable",1,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 查询当前卡位及热插拔
+  send:
+  - AT+MUECONFIG="simswitch"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 选择卡位0，关闭热插拔
+  send:
+  - AT+MUECONFIG="simswitch",0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

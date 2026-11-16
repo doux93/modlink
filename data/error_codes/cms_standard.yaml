@@ -1,0 +1,32 @@
+# 3GPP TS 27.005 标准 +CMS ERROR 错误码表（短信相关，常用子集）
+schema: modulink/error_codes@1
+kind: error_codes
+code_type: cms
+applies_to: "*"
+entries:
+  - code: 300
+    meaning: "ME 故障"
+    causes: ["模组内部短信模块异常"]
+    suggestions: ["重启模组后重试"]
+    severity: error
+  - code: 310
+    meaning: "SIM 卡未插入"
+    causes: ["同 CME 10"]
+    suggestions: ["重新插拔 SIM 卡"]
+    severity: error
+  - code: 313
+    meaning: "SIM 卡故障"
+    causes: ["卡损坏或接触不良"]
+    suggestions: ["换卡验证"]
+    severity: error
+  - code: 330
+    meaning: "短信中心(SMSC)地址未知"
+    causes: ["短信中心号码未配置"]
+    suggestions: ['AT+CSCA="+8613800xxx500" 配置短信中心（各省不同）']
+    severity: error
+    related_at: ["AT+CSCA?"]
+  - code: 500
+    meaning: "未知错误"
+    causes: ["未归类的短信错误"]
+    suggestions: ["确认卡是否开通短信功能（很多物联网卡无短信）"]
+    severity: error

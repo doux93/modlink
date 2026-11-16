@@ -1,0 +1,109 @@
+schema: modulink/diagflow@1
+id: uc_sms_1a23acd6
+name: PDU短信收发
+kind: usecase
+category: sms
+source: ML307B 通信流程示例
+verified: false
+applies_to:
+- ml307b
+steps:
+- id: s1
+  title: AT+CMGF=0
+  send:
+  - AT+CMGF=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+CNMI?
+  send:
+  - AT+CNMI?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CNMI\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CNMI（final={final}）
+    abort: true
+- id: s3
+  title: AT+CSMP?
+  send:
+  - AT+CSMP?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CSMP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CSMP（final={final}）
+    abort: true
+- id: s4
+  title: AT+CMGS=25
+  send:
+  - AT+CMGS=25
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGS（final={final}）
+    abort: true
+- id: s5
+  title: 列举未读短信
+  send:
+  - AT+CMGL=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGL（final={final}）
+    abort: true
+- id: s6
+  title: 再次列举，无未读短信。
+  send:
+  - AT+CMGL=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s7
+  title: 读取编号为8的短信
+  send:
+  - AT+CMGR=8
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGR（final={final}）
+    abort: true

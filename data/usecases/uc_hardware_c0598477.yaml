@@ -1,0 +1,34 @@
+schema: modulink/diagflow@1
+id: uc_hardware_c0598477
+name: LED灯
+kind: usecase
+category: hardware
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+steps:
+- id: s1
+  title: AT+CMSYSCTRL=3
+  send:
+  - AT+CMSYSCTRL=3
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+NRB
+  send:
+  - AT+NRB
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

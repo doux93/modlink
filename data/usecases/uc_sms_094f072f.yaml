@@ -1,0 +1,34 @@
+schema: modulink/diagflow@1
+id: uc_sms_094f072f
+name: 短信功能配置 · 短信默认配置
+kind: usecase
+category: sms
+source: ML551Z 通信流程示例
+verified: false
+applies_to:
+- ml551z
+steps:
+- id: s1
+  title: 配置接收到短信时自动上报
+  send:
+  - AT+CNMI=2,2,0,1,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 设置文本模式参数为：有效期为相对时间格式，并且编码类型为GSM 7bit。
+  send:
+  - AT+CSMP=49,255,0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

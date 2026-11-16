@@ -1,0 +1,76 @@
+schema: modulink/diagflow@1
+id: uc_network_5a41a6a1
+name: 锁定BAND
+kind: usecase
+category: network
+source: M5310-E 通信流程示例
+verified: false
+applies_to:
+- m5310-e
+steps:
+- id: s1
+  title: 查询支持的BAND列表
+  send:
+  - AT+NBAND=?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NABND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NABND（final={final}）
+    abort: true
+- id: s2
+  title: 关闭协议栈
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 锁定UE到B8
+  send:
+  - AT+NBAND=8
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 重新打开协议栈并自动驻网
+  send:
+  - AT+CFUN=5
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: AT+NBAND?
+  send:
+  - AT+NBAND?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NBAND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NBAND（final={final}）
+    abort: true

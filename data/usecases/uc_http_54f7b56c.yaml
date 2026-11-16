@@ -1,0 +1,33 @@
+schema: modulink/diagflow@1
+id: uc_http_54f7b56c
+name: HTTPS示例 · SSL证书选择与认证等级设置
+kind: usecase
+category: http
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: AT+MSSLCFG="cert",1,"s.ca" /*设置SSL 1使用“s.ca”证书*/
+  send:
+  - AT+MSSLCFG="cert",1,"s.ca" /*设置SSL 1使用“s.ca”证书*/
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+MSSLCFG="auth",1,1 /*设置SSL 1采用单项认证方式*/
+  send:
+  - AT+MSSLCFG="auth",1,1 /*设置SSL 1采用单项认证方式*/
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

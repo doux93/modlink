@@ -1,0 +1,60 @@
+schema: modulink/diagflow@1
+id: uc_network_38df86bd
+name: 自动拨号配置
+kind: usecase
+category: network
+source: 通信流程示例
+verified: false
+applies_to:
+- ml307b
+- ml307x
+- ml307y
+steps:
+- id: s1
+  title: 配置为自动连网（模组应用层网络）
+  send:
+  - AT+MUECONFIG="autoconn",1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 配置为自动拨号（上位机网卡拨号）
+  send:
+  - AT+MDIALUPCFG="auto",1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 取消自动拨号（上位机网卡拨号）
+  send:
+  - AT+MDIALUPCFG="auto",0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 取消自动连网（模组应用层网络）
+  send:
+  - AT+MUECONFIG="autoconn",0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

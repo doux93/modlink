@@ -1,0 +1,111 @@
+schema: modulink/diagflow@1
+id: uc_ftp_5558216e
+name: FTP示例 · 下载-通过串口输出
+kind: usecase
+category: ftp
+source: FTP用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 设置为串口传输模式
+  send:
+  - AT+MFTPCFG=0,"local_fs",0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 连接并登录FTP服务器
+  send:
+  - AT+MFTPCONN=0,"<FTP_SERVER_IP>","<FTP_USER>","<FTP_PASSWORD>",21
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPCONN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPCONN（final={final}）
+    abort: true
+- id: s3
+  title: 切换当前工作目录
+  send:
+  - AT+MFTPCWD=0,"/home/<FTP_USER>/test"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPCWD\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPCWD（final={final}）
+    abort: true
+- id: s4
+  title: 通过串口输入向FTP服务器覆盖上传文件
+  send:
+  - AT+MFTPSTOR=0,"1.txt",1,10,"1234567890"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPSTOR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPSTOR（final={final}）
+    abort: true
+- id: s5
+  title: 通过串口接收从FTP服务器下载的文件
+  send:
+  - AT+MFTPRETR=0,"1.txt"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPRETR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPRETR（final={final}）
+    abort: true
+- id: s6
+  title: 删除FTP服务器中指定文件
+  send:
+  - AT+MFTPDEL=0,"1.txt"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPDEL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPDEL（final={final}）
+    abort: true
+- id: s7
+  title: 断开与FTP服务器连接
+  send:
+  - AT+MFTPDISC=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPDISC\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPDISC（final={final}）
+    abort: true

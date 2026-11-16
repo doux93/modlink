@@ -1,0 +1,79 @@
+schema: modulink/diagflow@1
+id: uc_socket_a108de7a
+name: UDP/TCP数据接收 · TCP普通模式
+kind: usecase
+category: socket
+source: MN319-A 通信流程示例
+verified: false
+applies_to:
+- mn319-a
+steps:
+- id: s1
+  title: 关闭深睡眠，并保存flash。
+  send:
+  - AT+MLPMCFG="sleepmode",1,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 1#建立TCP连接，普通接收模式。
+  send:
+  - AT+MIPOPEN=1,"TCP","120.27.12.119",2016,60,0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPOPEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPOPEN（final={final}）
+    abort: true
+- id: s3
+  title: 1#发送数据11Bytes。
+  send:
+  - AT+MIPSEND=1,11,"12345678900"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPSEND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPSEND（final={final}）
+    abort: true
+- id: s4
+  title: 1#关闭连接。
+  send:
+  - AT+MIPCLOSE=1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCLOSE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCLOSE（final={final}）
+    abort: true
+- id: s5
+  title: 打开深睡眠，并保存flash。
+  send:
+  - AT+MLPMCFG="sleepmode",2,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

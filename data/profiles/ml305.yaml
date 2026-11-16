@@ -1,0 +1,57 @@
+schema: modulink/profile@1
+id: ml305
+name: "ML305 (LTE Cat4)"
+vendor: "中移物联"
+family: cat4
+model_codes: [ML305]
+series: ML305
+capabilities: [cellular, lte-cat4, ppp]
+support_level: verified
+detect:
+  command: "AT+CGMM"
+  match: '(?:^|[^A-Z0-9-])ML305(?:-[A-Z0-9]+)*(?:[^A-Z0-9-]|$)'
+  priority: 20
+ports:
+  - role: at
+    default_baud: 115200
+  - role: log
+    default_baud: 921600
+line_ending: "\r\n"
+urc_patterns:
+  - id: cereg_urc
+    pattern: '^\+CEREG: (?<stat>\d+)(,.*)?$'
+    label: "网络注册"
+    severity_field: stat
+    severity_map: { "0": error, "1": info, "2": warning, "3": error, "5": info }
+  - id: cgreg_urc
+    pattern: '^\+CGREG: (?<stat>\d+)(,.*)?$'
+    label: "GPRS 注册"
+    severity_field: stat
+    severity_map: { "1": info, "2": warning, "3": error, "5": info }
+    severity_default: warning
+at_commands:
+  - cmd: "AT+CSQ"
+    syntax: "AT+CSQ"
+    category: network
+    risk: none
+    doc: "查询信号质量，rssi 0-31，99=无信号，dBm = rssi*2-113。"
+  - cmd: "AT+CGDCONT"
+    syntax: 'AT+CGDCONT=<cid>,"IP","<APN>"'
+    category: pdp
+    risk: none
+    doc: "定义 PDP 上下文(APN)。Cat4 大流量卡注意确认套餐 APN。"
+  - cmd: "ATD"
+    syntax: "ATD*99***1#"
+    category: pdp
+    risk: none
+    doc: "拨号建立 PPP 数据连接（RNDIS/PPP 上网方式）。"
+  - cmd: "AT+CFUN"
+    syntax: "AT+CFUN=<fun>[,<rst>]"
+    category: system
+    risk: reboot
+    doc: "功能模式设置，AT+CFUN=1,1 重启模组——高危。"
+diagnostics: [network_attach]
+error_code_tables: [cme_standard, cms_standard]
+intents:
+  - phrases: ["查信号", "信号强度"]
+    sequence: ["AT+CSQ"]

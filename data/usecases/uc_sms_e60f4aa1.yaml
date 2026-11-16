@@ -1,0 +1,64 @@
+schema: modulink/diagflow@1
+id: uc_sms_e60f4aa1
+name: 文本短信收发
+kind: usecase
+category: sms
+source: ML551Z 通信流程示例
+verified: false
+applies_to:
+- ml551z
+steps:
+- id: s1
+  title: 配置文本模式
+  send:
+  - AT+CMGF=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 设置发送为bit7。（可根据实际设置为bit8/bit16）
+  send:
+  - AT+CSMP=49,255,0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 向号码13888888888发送短信
+  send:
+  - AT+CMGS="13888888888"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGS（final={final}）
+    abort: true
+- id: s4
+  title: 向10086发送短信
+  send:
+  - AT+CMGS="10086"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGS（final={final}）
+    abort: true

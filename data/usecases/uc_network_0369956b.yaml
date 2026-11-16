@@ -1,0 +1,191 @@
+schema: modulink/diagflow@1
+id: uc_network_0369956b
+name: 网络配置 · PDN激活与去激活
+kind: usecase
+category: network
+source: MN316-S 通信流程示例
+verified: false
+applies_to:
+- m5310-e
+- mn316-s
+steps:
+- id: s1
+  title: AT+CGACT?
+  send:
+  - AT+CGACT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGACT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGACT（final={final}）
+    abort: true
+- id: s2
+  title: 查询默认配置
+  send:
+  - AT+CGDCONT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGDCONT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGDCONT（final={final}）
+    abort: true
+- id: s3
+  title: 查询当前APN
+  send:
+  - AT+CGCONTRDP
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGCONTRDP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGCONTRDP（final={final}）
+    abort: true
+- id: s4
+  title: 去附着
+  send:
+  - AT+CGATT=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 修改默认配置，第0路配置将自动保存至NV，重启有效。
+  send:
+  - AT+CGDCONT=0,"IP","CMIOT"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: AT+CGDCONT?
+  send:
+  - AT+CGDCONT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGDCONT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGDCONT（final={final}）
+    abort: true
+- id: s7
+  title: 重新附着网络
+  send:
+  - AT+CGATT=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s8
+  title: 激活第0路
+  send:
+  - AT+CGACT=1,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s9
+  title: 配置PDP上下文
+  send:
+  - AT+CGDCONT=1,"IP","iot.10086.cn"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s10
+  title: 激活PDP
+  send:
+  - AT+CGACT=1,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s11
+  title: AT+CGATT=0
+  send:
+  - AT+CGATT=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s12
+  title: AT+CFUN=0
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s13
+  title: 去激活cid对应的PDP，适用于所有情况。
+  send:
+  - AT+CGACT=0,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s14
+  title: 去激活所有PDP，适用于所有情况。
+  send:
+  - AT+CGATT=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

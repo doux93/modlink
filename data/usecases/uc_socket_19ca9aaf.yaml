@@ -1,0 +1,70 @@
+schema: modulink/diagflow@1
+id: uc_socket_19ca9aaf
+name: IPv6数据业务 · IPv6 PING业务
+kind: usecase
+category: socket
+source: M5310-E 通信流程示例
+verified: false
+applies_to:
+- m5310-e
+steps:
+- id: s1
+  title: AT+CGPADDR
+  send:
+  - AT+CGPADDR
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGPADDR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGPADDR（final={final}）
+    abort: true
+- id: s2
+  title: AT+NPING="WWW.TAOBAO.COM"
+  send:
+  - AT+NPING="WWW.TAOBAO.COM"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NPING\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NPING（final={final}）
+    abort: true
+- id: s3
+  title: AT+NPING="2409:8C60:2500:D:3::3F9"
+  send:
+  - AT+NPING="2409:8C60:2500:D:3::3F9"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NPING\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NPING（final={final}）
+    abort: true
+- id: s4
+  title: AT+NPING="WWW.BAIDU.COM"
+  send:
+  - AT+NPING="WWW.BAIDU.COM"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NPING\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NPING（final={final}）
+    abort: true

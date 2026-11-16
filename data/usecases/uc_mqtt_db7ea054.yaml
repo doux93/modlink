@@ -1,0 +1,105 @@
+schema: modulink/diagflow@1
+id: uc_mqtt_db7ea054
+name: 非加密接入
+kind: usecase
+category: mqtt
+source: MQTT用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: AT+MQTTCFG="pingresp",0,1
+  send:
+  - AT+MQTTCFG="pingresp",0,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+MQTTCONN=0,"mqtt.heclouds.com",6002,"716335458"
+  send:
+  - AT+MQTTCONN=0,"mqtt.heclouds.com",6002,"716335458","425089","SnMHaAOMCbQD90eADEGpMBPu8pI="
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: AT+MQTTSUB=0,"world",1,"hello",2 /*订阅主题*/
+  send:
+  - AT+MQTTSUB=0,"world",1,"hello",2 /*订阅主题*/
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTSUB\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTSUB（final={final}）
+    abort: true
+- id: s4
+  title: AT+MQTTPUB=0,"world",2,0,0,4,"3242" /*发布消息QoS=2*/
+  send:
+  - AT+MQTTPUB=0,"world",2,0,0,4,"3242" /*发布消息QoS=2*/
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTPUB\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTPUB（final={final}）
+    abort: true
+- id: s5
+  title: AT+MQTTPUB=0,"world",1,0,0,4,"3242" /*发布消息QoS=1*/
+  send:
+  - AT+MQTTPUB=0,"world",1,0,0,4,"3242" /*发布消息QoS=1*/
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTPUB\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTPUB（final={final}）
+    abort: true
+- id: s6
+  title: AT+MQTTPUB=0,"world",0,0,0,4,"3242" /*发布消息QoS=0*/
+  send:
+  - AT+MQTTPUB=0,"world",0,0,0,4,"3242" /*发布消息QoS=0*/
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTPUB\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTPUB（final={final}）
+    abort: true
+- id: s7
+  title: AT+MQTTDISC=0 /*断开连接*/
+  send:
+  - AT+MQTTDISC=0 /*断开连接*/
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

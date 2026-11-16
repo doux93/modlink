@@ -1,0 +1,34 @@
+schema: modulink/diagflow@1
+id: uc_socket_c093d50c
+name: IPv6数据业务 · IPv6 TCPIP业务
+kind: usecase
+category: socket
+source: M5310-E 通信流程示例
+verified: false
+applies_to:
+- m5310-e
+steps:
+- id: s1
+  title: AT+NSOCR="DGRAM",17,12,2,"AF_INET6"
+  send:
+  - AT+NSOCR="DGRAM",17,12,2,"AF_INET6"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+NSOCR="STREAM",6,4,2,"AF_INET6"
+  send:
+  - AT+NSOCR="STREAM",6,4,2,"AF_INET6"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

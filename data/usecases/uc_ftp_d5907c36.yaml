@@ -1,0 +1,141 @@
+schema: modulink/diagflow@1
+id: uc_ftp_d5907c36
+name: FTP示例 · 下载-下载保存到本地文件
+kind: usecase
+category: ftp
+source: FTP用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 设置为本地文件系统传输模式
+  send:
+  - AT+MFTPCFG=0,"local_fs",1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 通过串口向本地文件系统传输文件
+  send:
+  - AT+MFPUT="/usr/test.txt",12,"CESHI3333333"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFPUT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFPUT（final={final}）
+    abort: true
+- id: s3
+  title: 连接并登录FTP服务器
+  send:
+  - AT+MFTPCONN=0,"<FTP_SERVER_IP>","<FTP_USER>","<FTP_PASSWORD>",21
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPCONN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPCONN（final={final}）
+    abort: true
+- id: s4
+  title: 切换当前工作目录
+  send:
+  - AT+MFTPCWD=0,"/home/<FTP_USER>/test"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPCWD\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPCWD（final={final}）
+    abort: true
+- id: s5
+  title: 通过本地文件系统向FTP服务器覆盖上传文件
+  send:
+  - AT+MFTPSTOR=0,"2.txt","/usr/test.txt"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPSTOR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPSTOR（final={final}）
+    abort: true
+- id: s6
+  title: 通过文件系统接收从FTP服务器下载的文件
+  send:
+  - AT+MFTPRETR=0,"2.txt","/usr/test.txt",5,7
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPRETR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPRETR（final={final}）
+    abort: true
+- id: s7
+  title: 获取本地文件系统指定文件的数据
+  send:
+  - AT+MFGET="/usr/test.txt"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFGET\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFGET（final={final}）
+    abort: true
+- id: s8
+  title: 删除FTP服务器中指定文件
+  send:
+  - AT+MFTPDEL=0,"2.txt"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPDEL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPDEL（final={final}）
+    abort: true
+- id: s9
+  title: 断开与FTP服务器连接
+  send:
+  - AT+MFTPDISC=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPDISC\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPDISC（final={final}）
+    abort: true

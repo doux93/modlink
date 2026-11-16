@@ -1,0 +1,72 @@
+schema: modulink/diagflow@1
+id: uc_network_02431d05
+name: 锁定BAND
+kind: usecase
+category: network
+source: MF308C 通信流程示例
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 锁定LTE制式
+  send:
+  - AT+MPSRAT="LTE"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: LTE制式下锁定BAND40
+  send:
+  - AT+MBAND="LTE",40
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 锁定NR制式
+  send:
+  - AT+MPSRAT="NR"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: NR制式下锁定BAND N41
+  send:
+  - AT+MBAND ="NR",41
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 查询支持的频段
+  send:
+  - AT+MBAND=?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MBAND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MBAND（final={final}）
+    abort: true

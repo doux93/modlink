@@ -1,0 +1,114 @@
+schema: modulink/diagflow@1
+id: uc_mqtt_fcae4de3
+name: MQTT示例 · 连接-订阅-推送-取消订阅
+kind: usecase
+category: mqtt
+source: MQTT用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: AT+MQTTOPEN=1,1,1,1,1,"mywill","001bye" /*发送连接建立请求
+  send:
+  - AT+MQTTOPEN=1,1,1,1,1,"mywill","001bye" /*发送连接建立请求，will主题名mywill，will消息内容001 bye。*/
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTOPEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTOPEN（final={final}）
+    abort: true
+- id: s2
+  title: 订阅主题pyr
+  send:
+  - AT+MQTTSUB="pyr",1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTSUBACK\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTSUBACK（final={final}）
+    abort: true
+- id: s3
+  title: 发布数据，数据内容为字符串abc。
+  send:
+  - AT+MQTTPUB="dev/gsm/u",1,1,0,0,"abc"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTPUBACK\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTPUBACK（final={final}）
+    abort: true
+- id: s4
+  title: AT+MQTTPUB="pyr",1,0,0,3,"7E7A7A" /*向已订阅主题pyr发布数据，
+  send:
+  - AT+MQTTPUB="pyr",1,0,0,3,"7E7A7A" /*向已订阅主题pyr发布数据，输入十六进制模式，此时终端将收到服务器下发的publish数据。*/
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTPUBACK\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTPUBACK（final={final}）
+    abort: true
+- id: s5
+  title: 向订阅主题发布数据，输入字符串数据。
+  send:
+  - AT+MQTTPUB="pyr",1,0,0,0,"abcdef"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTPUBACK\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTPUBACK（final={final}）
+    abort: true
+- id: s6
+  title: 取消订阅
+  send:
+  - AT+MQTTUNSUB="pyr"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTUNSUBACK\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTUNSUBACK（final={final}）
+    abort: true
+- id: s7
+  title: 再次向pyr发布数据
+  send:
+  - AT+MQTTPUB="pyr",1,0,0,0,"abcdef"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTPUBACK\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTPUBACK（final={final}）
+    abort: true

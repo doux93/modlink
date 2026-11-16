@@ -1,0 +1,58 @@
+schema: modulink/diagflow@1
+id: uc_sms_f85c2f23
+name: 短信功能配置 · 短信配置
+kind: usecase
+category: sms
+source: MR880A 通信流程示例
+verified: false
+applies_to:
+- mr880a
+steps:
+- id: s1
+  title: 配置接收到短信时+CMT自动上报
+  send:
+  - AT+CNMI=1,2,0,2,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 配置接收到短信时+CMTI上报.短信存储至存储器中
+  send:
+  - AT+CNMI=2,1,0,2,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 配置编码格式为IRA
+  send:
+  - AT+CSCS="IRA"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 设置文本模式参数为：有效期为相对时间格式，并且编码类型为GSM 7bit。
+  send:
+  - AT+CSMP=17,255,0,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

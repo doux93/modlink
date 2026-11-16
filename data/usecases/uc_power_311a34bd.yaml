@@ -1,0 +1,40 @@
+schema: modulink/diagflow@1
+id: uc_power_311a34bd
+name: 睡眠状态
+kind: usecase
+category: power
+source: ML302S 通信流程示例
+verified: false
+applies_to:
+- m5311-e
+- ml302s
+- mn316-s
+- mn319-a
+steps:
+- id: s1
+  title: 打开模组运行状态指示灯，即使能WAKEUP_OUT引脚输出功能。
+  send:
+  - AT+MLED=1,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 打开深睡眠URC信息。
+  send:
+  - AT+MLPMCFG="sleepind",2
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MLPMENTER\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MLPMENTER（final={final}）
+    abort: true

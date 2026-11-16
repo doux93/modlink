@@ -1,0 +1,49 @@
+schema: modulink/diagflow@1
+id: uc_hardware_3c244f8c
+name: GPIO
+kind: usecase
+category: hardware
+source: MR880A 通信流程示例
+verified: false
+applies_to:
+- mr880a
+steps:
+- id: s1
+  title: 查询Pin23当前GPIO配置
+  send:
+  - AT+MGPIO=23
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MGPIO\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MGPIO（final={final}）
+    abort: true
+- id: s2
+  title: 设置Pin23为输出高电平
+  send:
+  - AT+MGPIO=23,2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 设置Pin23为输出高电平
+  send:
+  - AT+MGPIO=23,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

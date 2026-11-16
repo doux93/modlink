@@ -1,0 +1,33 @@
+schema: modulink/diagflow@1
+id: uc_http_21d12766
+name: HTTP示例 · PUT请求
+kind: usecase
+category: http
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: AT+MHTTPCONTENT=0,0,0,"{"id":"speed1"\r,"tags":["m
+  send:
+  - AT+MHTTPCONTENT=0,0,0,"{"id":"speed1"\r,"tags":["mobile"],"unit":"m/s"\r,"unit_symbol":"m/s"}" /*content设置。ML302S/ML307S/ML302A/ML305A/ML307A/ML307G/ML305U/ML305M/ML307R/ML307B/ML307C/ML307M/ML307H/ML307N/ML307X/ML307Y：字符串参数内部不能包含引号，如果字符串参数内部一定要包含引号，需使用数据模式进行发送。*/
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+MHTTPREQUEST=0,3,0,"/put" /*PUT请求*/
+  send:
+  - AT+MHTTPREQUEST=0,3,0,"/put" /*PUT请求*/
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

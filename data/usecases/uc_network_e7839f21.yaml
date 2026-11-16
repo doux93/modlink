@@ -1,0 +1,52 @@
+schema: modulink/diagflow@1
+id: uc_network_e7839f21
+name: 网络配置 · PDN激活与去激活及应用层网络拨号
+kind: usecase
+category: network
+source: ML551Z 通信流程示例
+verified: false
+applies_to:
+- ml551z
+steps:
+- id: s1
+  title: 查询拨号状态
+  send:
+  - AT+MDIALUP?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MDIALUP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MDIALUP（final={final}）
+    abort: true
+- id: s2
+  title: 配置PDP上下文
+  send:
+  - AT+CGDCONT=1,"IPV4V6","cmnet"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 激活PDP，建立应用层拨号连接。
+  send:
+  - AT+MDIALUP=1,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MDIALUP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MDIALUP（final={final}）
+    abort: true

@@ -1,0 +1,55 @@
+schema: modulink/diagflow@1
+id: uc_network_e69babb1
+name: 驻网流程
+kind: usecase
+category: network
+source: MR880A 通信流程示例
+verified: false
+applies_to:
+- mr880a
+steps:
+- id: s1
+  title: AT+C5GREG?
+  send:
+  - AT+C5GREG?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+C5GREG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +C5GREG（final={final}）
+    abort: true
+- id: s2
+  title: AT+CEREG?
+  send:
+  - AT+CEREG?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CEREG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CEREG（final={final}）
+    abort: true
+- id: s3
+  title: AT+MUESTATS=cell
+  send:
+  - AT+MUESTATS=cell
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MUESTATS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MUESTATS（final={final}）
+    abort: true

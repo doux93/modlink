@@ -1,0 +1,1105 @@
+# cmiot 库 log 口日志模式知识库
+# 从 ASR SDK cmiot 源码扫描生成
+# 日志格式：[模块_LOG级别]函数(行号) 消息
+# 用于日志分析页匹配 log 口输出，关联错误原因和建议
+schema: modulink/log_patterns@1
+modules:
+- id: HTTP
+  name: HTTP
+  patterns:
+  - message: Could not write request
+    pattern: Could\ not\ write\ request
+    level: warn
+    count: 14
+    severity: warning
+  - message: '%s:client is not create'
+    pattern: '%s:client\ is\ not\ create'
+    level: error
+    count: 10
+    severity: error
+  - message: '%s:httpclient is not create'
+    pattern: '%s:httpclient\ is\ not\ create'
+    level: error
+    count: 10
+    severity: error
+  - message: hex convert error
+    pattern: hex\ convert\ error
+    level: warn
+    count: 8
+    severity: warning
+  - message: '%s:param in error'
+    pattern: '%s:param\ in\ error'
+    level: error
+    count: 7
+    severity: error
+  - message: '%s:http client is busy'
+    pattern: '%s:http\ client\ is\ busy'
+    level: warn
+    count: 7
+    severity: warning
+  - message: '%s:cm_malloc fail'
+    pattern: '%s:cm_malloc\ fail'
+    level: error
+    count: 6
+    severity: error
+  - message: '%s:__cm_at_httpclient_is_busy'
+    pattern: '%s:__cm_at_httpclient_is_busy'
+    level: warn
+    count: 6
+    severity: warning
+  - message: '%s:__cm_httpclient_tsk_send_incoming_queue fail'
+    pattern: '%s:__cm_httpclient_tsk_send_incoming_queue\ fail'
+    level: error
+    count: 5
+    severity: error
+  - message: '%s:__cm_httpclient_send_content fail %d'
+    pattern: '%s:__cm_httpclient_send_content\ fail\ %d'
+    level: warn
+    count: 5
+    severity: warning
+  - message: '%s:last post_buf is not used'
+    pattern: '%s:last\ post_buf\ is\ not\ used'
+    level: warn
+    count: 4
+    severity: warning
+  - message: '%s:cid %d cm_asocket_bind error !\r\n'
+    pattern: '%s:cid\ %d\ cm_asocket_bind\ error\ !'
+    level: error
+    count: 4
+    severity: error
+  - message: cant find httpclient\r\n
+    pattern: cant\ find\ httpclient
+    level: warn
+    count: 4
+    severity: warning
+  - message: '%s:param [in] error'
+    pattern: '%s:param\ \[in]\ error'
+    level: warn
+    count: 4
+    severity: warning
+  - message: '%s:socket error !\r\n'
+    pattern: '%s:socket\ error\ !'
+    level: error
+    count: 4
+    severity: error
+  - message: custom_header error
+    pattern: custom_header\ error
+    level: warn
+    count: 3
+    severity: warning
+  - message: __cm_httpclient_sync_response_data_save fail\r\n
+    pattern: __cm_httpclient_sync_response_data_save\ fail
+    level: error
+    count: 3
+    severity: error
+  - message: cm_socket_get_local_addr error
+    pattern: cm_socket_get_local_addr\ error
+    level: error
+    count: 2
+    severity: error
+  - message: '%s:cid %d do not active !\r\n'
+    pattern: '%s:cid\ %d\ do\ not\ active\ !'
+    level: error
+    count: 2
+    severity: error
+  - message: redir __cm_httpclient_parse_url fail\r\n
+    pattern: redir\ __cm_httpclient_parse_url\ fail
+    level: warn
+    count: 2
+    severity: warning
+  - message: '%s:method error %d'
+    pattern: '%s:method\ error\ %d'
+    level: warn
+    count: 2
+    severity: warning
+  - message: '%s:connect error !\r\n'
+    pattern: '%s:connect\ error\ !'
+    level: error
+    count: 2
+    severity: error
+  - message: specific_header error
+    pattern: specific_header\ error
+    level: warn
+    count: 2
+    severity: warning
+  - message: '%s:path parse fail'
+    pattern: '%s:path\ parse\ fail'
+    level: error
+    count: 2
+    severity: error
+  - message: '%s:httpclient connect fail'
+    pattern: '%s:httpclient\ connect\ fail'
+    level: error
+    count: 2
+    severity: error
+- id: FTP
+  name: FTP
+  patterns:
+  - message: handle is error
+    pattern: handle\ is\ error
+    level: error
+    count: 16
+    severity: error
+  - message: msg sync fail\n
+    pattern: msg\ sync\ fail
+    level: error
+    count: 12
+    severity: error
+  - message: msg rcv err\n
+    pattern: msg\ rcv\ err
+    level: error
+    count: 12
+    severity: error
+  - message: Req(%s) is inprocessing!\n
+    pattern: Req\(%s\)\ is\ inprocessing!
+    level: error
+    count: 10
+    severity: error
+  - message: socket err\n
+    pattern: socket\ err
+    level: error
+    count: 4
+    severity: error
+  - message: stor_req fail
+    pattern: stor_req\ fail
+    level: error
+    count: 4
+    severity: error
+  - message: conn err,%d\n
+    pattern: conn\ err,%d
+    level: error
+    count: 4
+    severity: error
+  - message: bind err\n
+    pattern: bind\ err
+    level: error
+    count: 4
+    severity: error
+  - message: ftp change dir fail\n
+    pattern: ftp\ change\ dir\ fail
+    level: error
+    count: 3
+    severity: error
+  - message: file size is 0
+    pattern: file\ size\ is\ 0
+    level: error
+    count: 3
+    severity: error
+  - message: client is null
+    pattern: client\ is\ null
+    level: error
+    count: 3
+    severity: error
+  - message: cm_file_open failed
+    pattern: cm_file_open\ failed
+    level: error
+    count: 3
+    severity: error
+  - message: mkdir_req fail
+    pattern: mkdir_req\ fail
+    level: error
+    count: 3
+    severity: error
+  - message: ftp put fail\n
+    pattern: ftp\ put\ fail
+    level: error
+    count: 2
+    severity: error
+  - message: cm_socket_get_local_addr error
+    pattern: cm_socket_get_local_addr\ error
+    level: error
+    count: 2
+    severity: error
+  - message: get pdp addr err,cid:%d\n
+    pattern: get\ pdp\ addr\ err,cid:%d
+    level: error
+    count: 2
+    severity: error
+  - message: strlen(databuf) exceeds 1024 or strlen(databuf) and length are not equal
+    pattern: strlen\(databuf\)\ exceeds\ 1024\ or\ strlen\(databuf\)\ and\ length\ are\ not\ equal
+    level: error
+    count: 2
+    severity: error
+  - message: make timestamp error!\n
+    pattern: make\ timestamp\ error!
+    level: error
+    count: 2
+    severity: error
+  - message: append_req fail
+    pattern: append_req\ fail
+    level: error
+    count: 2
+    severity: error
+  - message: ftp find close fail\n
+    pattern: ftp\ find\ close\ fail
+    level: error
+    count: 2
+    severity: error
+  - message: transmode not enable
+    pattern: transmode\ not\ enable
+    level: error
+    count: 2
+    severity: error
+  - message: ftp find first fail\n
+    pattern: ftp\ find\ first\ fail
+    level: error
+    count: 2
+    severity: error
+  - message: ftp find next fail\n
+    pattern: ftp\ find\ next\ fail
+    level: error
+    count: 2
+    severity: error
+  - message: name=%s,size=%d,time=%d,attr=%d,permision=%d\n
+    pattern: name=%s,size=%d,time=%d,attr=%d,permision=%d
+    level: error
+    count: 2
+    severity: error
+  - message: length parsing error %d
+    pattern: length\ parsing\ error\ %d
+    level: error
+    count: 2
+    severity: error
+- id: CMMODEM
+  name: Modem/??
+  patterns:
+  - message: 'Unsupported network format: %d'
+    pattern: Unsupported\ network\ format:\ %d
+    level: error
+    count: 4
+    severity: error
+  - message: Failed to allocate memory for cmd_data.m_data_ptr.
+    pattern: Failed\ to\ allocate\ memory\ for\ cmd_data\.m_data_ptr\.
+    level: error
+    count: 4
+    severity: error
+  - message: m_immd_telephony_send_sync_cmd SEND ERROR
+    pattern: m_immd_telephony_send_sync_cmd\ SEND\ ERROR
+    level: error
+    count: 4
+    severity: error
+  - message: 'Failed to format AT command: snprintf error or buffer overflow.'
+    pattern: Failed\ to\ format\ AT\ command:\ snprintf\ error\ or\ buffer\ overflow\.
+    level: error
+    count: 4
+    severity: error
+  - message: Memory allocation failed for 'out'
+    pattern: Memory\ allocation\ failed\ for\ 'out'
+    level: error
+    count: 3
+    severity: error
+  - message: cm_modem_get_cereg_state cm_at_cmd_modem_rsp_proc error
+    pattern: cm_modem_get_cereg_state\ cm_at_cmd_modem_rsp_proc\ error
+    level: error
+    count: 2
+    severity: error
+  - message: band error :%d
+    pattern: band\ error\ :%d
+    level: error
+    count: 2
+    severity: error
+  - message: cm_modem_get_sband_info m_immd_telephony_send_sync_cmd SEND ERROR
+    pattern: cm_modem_get_sband_info\ m_immd_telephony_send_sync_cmd\ SEND\ ERROR
+    level: error
+    count: 2
+    severity: error
+  - message: Failed to read current modem config from NV.
+    pattern: Failed\ to\ read\ current\ modem\ config\ from\ NV\.
+    level: error
+    count: 2
+    severity: error
+  - message: param error
+    pattern: param\ error
+    level: error
+    count: 2
+    severity: error
+  - message: cm_modem_get_cfun cm_at_cmd_modem_rsp_proc error
+    pattern: cm_modem_get_cfun\ cm_at_cmd_modem_rsp_proc\ error
+    level: error
+    count: 2
+    severity: error
+  - message: 'Invalid input parameters: size or format is NULL.'
+    pattern: Invalid\ input\ parameters:\ size\ or\ format\ is\ NULL\.
+    level: error
+    count: 2
+    severity: error
+  - message: 'Invalid cid parameter: %d, should be between 1 and 10'
+    pattern: Invalid\ cid\ parameter:\ %d,\ should\ be\ between\ 1\ and\ 10
+    level: error
+    count: 2
+    severity: error
+  - message: 'CGAUTH ptr: %s'
+    pattern: CGAUTH\ ptr:\ %s
+    level: error
+    count: 2
+    severity: error
+  - message: 'Failed to parse parameters: incorrect format.'
+    pattern: Failed\ to\ parse\ parameters:\ incorrect\ format\.
+    level: error
+    count: 2
+    severity: error
+  - message: cm_at_cmd_modem_rsp_proc error
+    pattern: cm_at_cmd_modem_rsp_proc\ error
+    level: error
+    count: 2
+    severity: error
+  - message: 'Failed to append command terminator: buffer overflow.'
+    pattern: Failed\ to\ append\ command\ terminator:\ buffer\ overflow\.
+    level: error
+    count: 2
+    severity: error
+  - message: 'Failed to append network format to AT command: buffer overflow.'
+    pattern: Failed\ to\ append\ network\ format\ to\ AT\ command:\ buffer\ overflow\.
+    level: error
+    count: 2
+    severity: error
+  - message: Memory allocation failed for response string
+    pattern: Memory\ allocation\ failed\ for\ response\ string
+    level: error
+    count: 2
+    severity: error
+  - message: 'cm_nv_save_ims_cfg ERROR: %s'
+    pattern: cm_nv_save_ims_cfg\ ERROR:\ %s
+    level: error
+    count: 1
+    severity: error
+  - message: 'Failed to get CAVIMS status: %s'
+    pattern: Failed\ to\ get\ CAVIMS\ status:\ %s
+    level: error
+    count: 1
+    severity: error
+  - message: 'Failed to set CASIMS: %s'
+    pattern: Failed\ to\ set\ CASIMS:\ %s
+    level: error
+    count: 1
+    severity: error
+  - message: cm_modem_get_default_apn cm_at_cmd_modem_rsp_proc error
+    pattern: cm_modem_get_default_apn\ cm_at_cmd_modem_rsp_proc\ error
+    level: error
+    count: 1
+    severity: error
+  - message: 'Invalid configuration: lte_ims_enable and nr_ims_enable must be the same.'
+    pattern: Invalid\ configuration:\ lte_ims_enable\ and\ nr_ims_enable\ must\ be\ the\ same\.
+    level: error
+    count: 1
+    severity: error
+  - message: 'Failed to set CAVIMS: %s'
+    pattern: Failed\ to\ set\ CAVIMS:\ %s
+    level: error
+    count: 1
+    severity: error
+- id: CM_ASOCKET
+  name: Socket
+  patterns:
+  - message: '%s() line:%d asocket is invalid!'
+    pattern: '%s\(\)\ line:%d\ asocket\ is\ invalid!'
+    level: error
+    count: 10
+    severity: error
+  - message: '%d __cm_asocket_get fail'
+    pattern: '%d\ __cm_asocket_get\ fail'
+    level: error
+    count: 7
+    severity: error
+  - message: '%d buffer NULL'
+    pattern: '%d\ buffer\ NULL'
+    level: error
+    count: 4
+    severity: error
+  - message: '%s() line:%d asocket list is full!'
+    pattern: '%s\(\)\ line:%d\ asocket\ list\ is\ full!'
+    level: error
+    count: 3
+    severity: error
+  - message: '%s() line:%d __cm_asocket_open failed!'
+    pattern: '%s\(\)\ line:%d\ __cm_asocket_open\ failed!'
+    level: error
+    count: 3
+    severity: error
+  - message: malloc fail
+    pattern: malloc\ fail
+    level: error
+    count: 3
+    severity: error
+  - message: '%d param error'
+    pattern: '%d\ param\ error'
+    level: error
+    count: 2
+    severity: error
+  - message: '%s() line:%d cm_malloc failed!'
+    pattern: '%s\(\)\ line:%d\ cm_malloc\ failed!'
+    level: error
+    count: 2
+    severity: error
+  - message: '%s() line:%d connect error(%d)!'
+    pattern: '%s\(\)\ line:%d\ connect\ error\(%d\)!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d listen error(%d)!'
+    pattern: '%s\(\)\ line:%d\ listen\ error\(%d\)!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d accept error(%d)!'
+    pattern: '%s\(\)\ line:%d\ accept\ error\(%d\)!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d invalid index!'
+    pattern: '%s\(\)\ line:%d\ invalid\ index!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d index is invalid!'
+    pattern: '%s\(\)\ line:%d\ index\ is\ invalid!'
+    level: error
+    count: 1
+    severity: error
+  - message: not support
+    pattern: not\ support
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d closesocket error(%d)!'
+    pattern: '%s\(\)\ line:%d\ closesocket\ error\(%d\)!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d asocket alloc failed!'
+    pattern: '%s\(\)\ line:%d\ asocket\ alloc\ failed!'
+    level: error
+    count: 1
+    severity: error
+  - message: __cm_asocket_local_socket_event fail
+    pattern: __cm_asocket_local_socket_event\ fail
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d max_num is invalid!'
+    pattern: '%s\(\)\ line:%d\ max_num\ is\ invalid!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d socket error!'
+    pattern: '%s\(\)\ line:%d\ socket\ error!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d bind error!'
+    pattern: '%s\(\)\ line:%d\ bind\ error!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d cm_mutex_create fail!'
+    pattern: '%s\(\)\ line:%d\ cm_mutex_create\ fail!'
+    level: error
+    count: 1
+    severity: error
+  - message: recvfrom fail
+    pattern: recvfrom\ fail
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d sock is already async socket!'
+    pattern: '%s\(\)\ line:%d\ sock\ is\ already\ async\ socket!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d select error'
+    pattern: '%s\(\)\ line:%d\ select\ error'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d socket error(%d)!'
+    pattern: '%s\(\)\ line:%d\ socket\ error\(%d\)!'
+    level: error
+    count: 1
+    severity: error
+- id: CMLBS
+  name: LBS??
+  patterns:
+  - message: get position failed!
+    pattern: get\ position\ failed!
+    level: error
+    count: 3
+    severity: error
+  - message: fopen %s fail
+    pattern: fopen\ %s\ fail
+    level: error
+    count: 2
+    severity: error
+  - message: Last result failure
+    pattern: Last\ result\ failure
+    level: error
+    count: 2
+    severity: error
+  - message: net error!
+    pattern: net\ error!
+    level: error
+    count: 2
+    severity: error
+  - message: error:file_path or file_data is null
+    pattern: error:file_path\ or\ file_data\ is\ null
+    level: error
+    count: 2
+    severity: error
+  - message: read amapcfg fail
+    pattern: read\ amapcfg\ fail
+    level: error
+    count: 1
+    severity: error
+  - message: send contant fail
+    pattern: send\ contant\ fail
+    level: error
+    count: 1
+    severity: error
+  - message: write atcmdcfg fail:%d
+    pattern: write\ atcmdcfg\ fail:%d
+    level: error
+    count: 1
+    severity: error
+  - message: input param fail!
+    pattern: input\ param\ fail!
+    level: error
+    count: 1
+    severity: error
+  - message: fread from %s fail
+    pattern: fread\ from\ %s\ fail
+    level: error
+    count: 1
+    severity: error
+  - message: __cm_lbs_GetNearbts m_immd_telephony_send_sync_cmd SEND ERROR
+    pattern: __cm_lbs_GetNearbts\ m_immd_telephony_send_sync_cmd\ SEND\ ERROR
+    level: error
+    count: 1
+    severity: error
+  - message: fwrite to %s error
+    pattern: fwrite\ to\ %s\ error
+    level: error
+    count: 1
+    severity: error
+  - message: get Nearbts fail!
+    pattern: get\ Nearbts\ fail!
+    level: error
+    count: 1
+    severity: error
+  - message: __cm_lbs_GetNearbts cm_at_cmd_modem_rsp_proc error
+    pattern: __cm_lbs_GetNearbts\ cm_at_cmd_modem_rsp_proc\ error
+    level: error
+    count: 1
+    severity: error
+  - message: decimal_len long
+    pattern: decimal_len\ long
+    level: error
+    count: 1
+    severity: error
+  - message: platform uninit
+    pattern: platform\ uninit
+    level: error
+    count: 1
+    severity: error
+  - message: amap state null
+    pattern: amap\ state\ null
+    level: error
+    count: 1
+    severity: error
+  - message: sign1 fail
+    pattern: sign1\ fail
+    level: error
+    count: 1
+    severity: error
+  - message: amap_location fail :%d
+    pattern: amap_location\ fail\ :%d
+    level: error
+    count: 1
+    severity: error
+  - message: location fail :%d
+    pattern: location\ fail\ :%d
+    level: error
+    count: 1
+    severity: error
+  - message: input attr is null
+    pattern: input\ attr\ is\ null
+    level: error
+    count: 1
+    severity: error
+  - message: amap busy!
+    pattern: amap\ busy!
+    level: error
+    count: 1
+    severity: error
+  - message: http requst fail! err code:%d
+    pattern: http\ requst\ fail!\ err\ code:%d
+    level: error
+    count: 1
+    severity: error
+  - message: Nearbts fail!
+    pattern: Nearbts\ fail!
+    level: error
+    count: 1
+    severity: error
+  - message: sign2 fail
+    pattern: sign2\ fail
+    level: error
+    count: 1
+    severity: error
+- id: CM_FWUP
+  name: ????
+  patterns:
+  - message: get firmware error
+    pattern: get\ firmware\ error
+    level: error
+    count: 2
+    severity: error
+  - message: fwup is NULL
+    pattern: fwup\ is\ NULL
+    level: error
+    count: 2
+    severity: error
+  - message: fwup struct restore error!
+    pattern: fwup\ struct\ restore\ error!
+    level: error
+    count: 1
+    severity: error
+  - message: fwup struct save error!
+    pattern: fwup\ struct\ save\ error!
+    level: error
+    count: 1
+    severity: error
+  - message: fwup state is downloaded
+    pattern: fwup\ state\ is\ downloaded
+    level: error
+    count: 1
+    severity: error
+  - message: url is null
+    pattern: url\ is\ null
+    level: error
+    count: 1
+    severity: error
+  - message: firmware update fail!
+    pattern: firmware\ update\ fail!
+    level: error
+    count: 1
+    severity: error
+  - message: firmware erase fail!
+    pattern: firmware\ erase\ fail!
+    level: error
+    count: 1
+    severity: error
+  - message: up is NULL
+    pattern: up\ is\ NULL
+    level: error
+    count: 1
+    severity: error
+  - message: offset %d, len %d
+    pattern: offset\ %d,\ len\ %d
+    level: error
+    count: 1
+    severity: error
+  - message: write firmware fail!
+    pattern: write\ firmware\ fail!
+    level: error
+    count: 1
+    severity: error
+  - message: cm_ftp_manager_size ret:%d
+    pattern: cm_ftp_manager_size\ ret:%d
+    level: error
+    count: 1
+    severity: error
+  - message: FTP FAIL, event:%d
+    pattern: FTP\ FAIL,\ event:%d
+    level: error
+    count: 1
+    severity: error
+  - message: cm_ftp_manager_change_dir ret:%d
+    pattern: cm_ftp_manager_change_dir\ ret:%d
+    level: error
+    count: 1
+    severity: error
+  - message: offset(%d) < reported_offset(%d)
+    pattern: offset\(%d\)\ <\ reported_offset\(%d\)
+    level: warn
+    count: 1
+    severity: warning
+  - message: url analysis path is null
+    pattern: url\ analysis\ path\ is\ null
+    level: error
+    count: 1
+    severity: error
+  - message: cm_ftp_open_async error
+    pattern: cm_ftp_open_async\ error
+    level: error
+    count: 1
+    severity: error
+  - message: open ftp error
+    pattern: open\ ftp\ error
+    level: error
+    count: 1
+    severity: error
+  - message: cm_ftp_create_async error
+    pattern: cm_ftp_create_async\ error
+    level: error
+    count: 1
+    severity: error
+  - message: segment reconnect fail
+    pattern: segment\ reconnect\ fail
+    level: error
+    count: 1
+    severity: error
+  - message: ftp is opened
+    pattern: ftp\ is\ opened
+    level: error
+    count: 1
+    severity: error
+- id: CM_OTA
+  name: OTA
+  patterns:
+  - message: open OTA packet fail!
+    pattern: open\ OTA\ packet\ fail!
+    level: error
+    count: 2
+    severity: error
+  - message: upgrade fail, ret = %d!
+    pattern: upgrade\ fail,\ ret\ =\ %d!
+    level: error
+    count: 2
+    severity: error
+  - message: mkdir fail %s
+    pattern: mkdir\ fail\ %s
+    level: error
+    count: 2
+    severity: error
+  - message: init OTA fail, ret = %d!
+    pattern: init\ OTA\ fail,\ ret\ =\ %d!
+    level: error
+    count: 2
+    severity: error
+  - message: file_name is NULL!
+    pattern: file_name\ is\ NULL!
+    level: error
+    count: 1
+    severity: error
+  - message: Context save failed after erase
+    pattern: Context\ save\ failed\ after\ erase
+    level: error
+    count: 1
+    severity: error
+  - message: Firmware erase failed
+    pattern: Firmware\ erase\ failed
+    level: error
+    count: 1
+    severity: error
+  - message: Context restore failed, skip firmware erase
+    pattern: Context\ restore\ failed,\ skip\ firmware\ erase
+    level: error
+    count: 1
+    severity: error
+  - message: seek OTA packet fail, offset = %d!
+    pattern: seek\ OTA\ packet\ fail,\ offset\ =\ %d!
+    level: error
+    count: 1
+    severity: error
+  - message: cm_ota_context_restore fail
+    pattern: cm_ota_context_restore\ fail
+    level: error
+    count: 1
+    severity: error
+  - message: delete OTA packet fail, ret = %d!
+    pattern: delete\ OTA\ packet\ fail,\ ret\ =\ %d!
+    level: error
+    count: 1
+    severity: error
+  - message: OTA packet not exist!
+    pattern: OTA\ packet\ not\ exist!
+    level: error
+    count: 1
+    severity: error
+  - message: cm_ota_context_save fail
+    pattern: cm_ota_context_save\ fail
+    level: error
+    count: 1
+    severity: error
+- id: CM_ELOOP
+  name: ????
+  patterns:
+  - message: '%s() line:%d eloop is NULL!'
+    pattern: '%s\(\)\ line:%d\ eloop\ is\ NULL!'
+    level: error
+    count: 3
+    severity: error
+  - message: '%s() line:%d event or eloop is NULL!'
+    pattern: '%s\(\)\ line:%d\ event\ or\ eloop\ is\ NULL!'
+    level: error
+    count: 2
+    severity: error
+  - message: '%s() line:%d malloc failed!'
+    pattern: '%s\(\)\ line:%d\ malloc\ failed!'
+    level: error
+    count: 2
+    severity: error
+  - message: '%s() line:%d osMutexNew failed!'
+    pattern: '%s\(\)\ line:%d\ osMutexNew\ failed!'
+    level: error
+    count: 2
+    severity: error
+  - message: '%s() line:%d osEventFlagsSet error(%d)!'
+    pattern: '%s\(\)\ line:%d\ osEventFlagsSet\ error\(%d\)!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d osEventFlagsWait error(%d)!'
+    pattern: '%s\(\)\ line:%d\ osEventFlagsWait\ error\(%d\)!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d max_num=%d is invalid!'
+    pattern: '%s\(\)\ line:%d\ max_num=%d\ is\ invalid!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d osEventFlagsNew failed!'
+    pattern: '%s\(\)\ line:%d\ osEventFlagsNew\ failed!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d can not delete default eloop!'
+    pattern: '%s\(\)\ line:%d\ can\ not\ delete\ default\ eloop!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d __cm_eloop_init failed!'
+    pattern: '%s\(\)\ line:%d\ __cm_eloop_init\ failed!'
+    level: error
+    count: 1
+    severity: error
+- id: CMFTP
+  name: FTP
+  patterns:
+  - message: parsing connect_id error
+    pattern: parsing\ connect_id\ error
+    level: error
+    count: 4
+    severity: error
+  - message: filename parse error
+    pattern: filename\ parse\ error
+    level: error
+    count: 4
+    severity: error
+  - message: databuf parse error
+    pattern: databuf\ parse\ error
+    level: error
+    count: 2
+    severity: error
+  - message: local_filename parse error
+    pattern: local_filename\ parse\ error
+    level: error
+    count: 2
+    severity: error
+  - message: paranum error
+    pattern: paranum\ error
+    level: error
+    count: 1
+    severity: error
+  - message: param error
+    pattern: param\ error
+    level: error
+    count: 1
+    severity: error
+- id: CMCOM
+  name: ??
+  patterns:
+  - message: remove the last \\r or \\n
+    pattern: remove\ the\ last\ \\\ or\ \\
+    level: error
+    count: 2
+    severity: error
+  - message: cm_get_imei error!\r\n
+    pattern: cm_get_imei\ error!
+    level: error
+    count: 1
+    severity: error
+  - message: get iccid from usim error
+    pattern: get\ iccid\ from\ usim\ error
+    level: error
+    count: 1
+    severity: error
+  - message: get_imei_callback write ok
+    pattern: get_imei_callback\ write\ ok
+    level: error
+    count: 1
+    severity: error
+  - message: s_cmstd_config sleepind_report=%d!\r\n
+    pattern: s_cmstd_config\ sleepind_report=%d!
+    level: error
+    count: 1
+    severity: error
+  - message: cm_mlpmcfg_restore ef_get_env_blob ret=%d!\r\n
+    pattern: cm_mlpmcfg_restore\ ef_get_env_blob\ ret=%d!
+    level: error
+    count: 1
+    severity: error
+  - message: get IMSI from usim error
+    pattern: get\ IMSI\ from\ usim\ error
+    level: error
+    count: 1
+    severity: error
+  - message: parse_next_escstring esc %s\n
+    pattern: parse_next_escstring\ esc\ %s
+    level: error
+    count: 1
+    severity: error
+  - message: Cannot parse string with \
+    pattern: Cannot\ parse\ string\ with\ \\
+    level: error
+    count: 1
+    severity: error
+  - message: Error! format or cmd is NULL
+    pattern: Error!\ format\ or\ cmd\ is\ NULL
+    level: error
+    count: 1
+    severity: error
+  - message: get IMEI error
+    pattern: get\ IMEI\ error
+    level: error
+    count: 1
+    severity: error
+  - message: 'param_list[%d]: %s'
+    pattern: param_list\[%d]:\ %s
+    level: error
+    count: 1
+    severity: error
+- id: CM_ETIMER
+  name: ???
+  patterns:
+  - message: '%s() line:%d manager or timer is NULL!'
+    pattern: '%s\(\)\ line:%d\ manager\ or\ timer\ is\ NULL!'
+    level: error
+    count: 2
+    severity: error
+  - message: '%s() line:%d manager is NULL!'
+    pattern: '%s\(\)\ line:%d\ manager\ is\ NULL!'
+    level: error
+    count: 2
+    severity: error
+  - message: '%s() line:%d __cm_etimer_list_del failed!'
+    pattern: '%s\(\)\ line:%d\ __cm_etimer_list_del\ failed!'
+    level: error
+    count: 1
+    severity: error
+  - message: fmt, args...
+    pattern: fmt,\ args\.\.\.
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d timer or callback is NULL!'
+    pattern: '%s\(\)\ line:%d\ timer\ or\ callback\ is\ NULL!'
+    level: error
+    count: 1
+    severity: error
+- id: CM_ASYNC_DNS
+  name: DNS
+  patterns:
+  - message: '%s() line:%d alloc request id failed!'
+    pattern: '%s\(\)\ line:%d\ alloc\ request\ id\ failed!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d cm_eloop_register_event failed!'
+    pattern: '%s\(\)\ line:%d\ cm_eloop_register_event\ failed!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d cm_eloop_post_event failed!'
+    pattern: '%s\(\)\ line:%d\ cm_eloop_post_event\ failed!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d cm_malloc failed!'
+    pattern: '%s\(\)\ line:%d\ cm_malloc\ failed!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d invalid request id!'
+    pattern: '%s\(\)\ line:%d\ invalid\ request\ id!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d dns request list is full!'
+    pattern: '%s\(\)\ line:%d\ dns\ request\ list\ is\ full!'
+    level: error
+    count: 1
+    severity: error
+  - message: '%s() line:%d max_num is invalid!'
+    pattern: '%s\(\)\ line:%d\ max_num\ is\ invalid!'
+    level: error
+    count: 1
+    severity: error
+- id: CMASYDNS
+  name: DNS
+  patterns:
+  - message: '%s() line:%d cm_plat_dns_get_ip_addr error(%d)!'
+    pattern: '%s\(\)\ line:%d\ cm_plat_dns_get_ip_addr\ error\(%d\)!'
+    level: error
+    count: 4
+    severity: error
+  - message: '%s() line:%d dns_gethostbyname_addrtype error(%d)!'
+    pattern: '%s\(\)\ line:%d\ dns_gethostbyname_addrtype\ error\(%d\)!'
+    level: error
+    count: 2
+    severity: error
+- id: CM_DAEMON
+  name: ????
+  patterns:
+  - message: fmt, args...
+    pattern: fmt,\ args\.\.\.
+    level: error
+    count: 2
+    severity: error
+  - message: daemon msg send fail!
+    pattern: daemon\ msg\ send\ fail!
+    level: error
+    count: 1
+    severity: error
+  - message: unknow daemon type :%d
+    pattern: unknow\ daemon\ type\ :%d
+    level: error
+    count: 1
+    severity: error
+- id: CMNETLED
+  name: ?????
+  patterns:
+  - message: cereg get error
+    pattern: cereg\ get\ error
+    level: error
+    count: 1
+    severity: error
+  - message: c5greg get error
+    pattern: c5greg\ get\ error
+    level: error
+    count: 1
+    severity: error
+- id: CMNTP
+  name: NTP
+  patterns:
+  - message: ip_addr == NULL error\r\n
+    pattern: ip_addr\ ==\ NULL\ error
+    level: error
+    count: 1
+    severity: error
+- id: CMCOMMONAT
+  name: AT??
+  patterns:
+  - message: Error! format or cmd is NULL
+    pattern: Error!\ format\ or\ cmd\ is\ NULL
+    level: error
+    count: 1
+    severity: error
+- id: CMNORMAL
+  name: ??
+  patterns:
+  - message: Cannot parse string with \
+    pattern: Cannot\ parse\ string\ with\ \\
+    level: warn
+    count: 1
+    severity: warning

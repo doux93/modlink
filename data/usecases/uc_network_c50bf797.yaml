@@ -1,0 +1,117 @@
+schema: modulink/diagflow@1
+id: uc_network_c50bf797
+name: 命令同步网络时间
+kind: usecase
+category: network
+source: 通信流程示例
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: AT+MNTP[=<server>[,<port>,[<sync>,[<timeout>]]]]
+  send:
+  - AT+MNTP[=<server>[,<port>,[<sync>,[<timeout>]]]]
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 向默认的NTP服务器（ntp1.aliyun.com）请求网络时间，且更新本地时钟。
+  send:
+  - AT+MNTP
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 本地时间已同步更新到NTP网络时间。
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 向ntp1.aliyun.com服务器请求网络时间，且不更新本地时钟。
+  send:
+  - AT+MNTP="ntp1.aliyun.com",123,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 由于AT+MNTP未同步本地时钟，因此AT+CCLK?与AT+MNTP返回结果存在一定误差。
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: 向默认的NTP服务器（ntp1.aliyun.com）请求网络时间，且更新本地时钟。
+  send:
+  - AT+MNTP
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s7
+  title: 本地时间已同步更新到NTP网络时间。
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s8
+  title: 向ntp1.aliyun.com服务器请求网络时间，且不更新本地时钟。
+  send:
+  - AT+MNTP="ntp1.aliyun.com",123,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s9
+  title: 由于AT+MNTP未同步本地时钟，因此AT+CCLK?与AT+MNTP返回结果存在一定误差。
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

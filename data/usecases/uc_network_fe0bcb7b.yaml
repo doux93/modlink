@@ -1,0 +1,53 @@
+schema: modulink/diagflow@1
+id: uc_network_fe0bcb7b
+name: 驻网自动同步网络时间
+kind: usecase
+category: network
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+- mn316a
+steps:
+- id: s1
+  title: AT+CCLK?
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CCLK\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CCLK（final={final}）
+    abort: true
+- id: s2
+  title: 未附着上网络，通过AT+CCLK查询报错。
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGEV\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGEV（final={final}）
+    abort: true
+- id: s3
+  title: AT+CCLK?
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

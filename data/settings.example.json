@@ -1,0 +1,11 @@
+{
+  "ai": {
+    "base_url": "https://onerouter.cmaiot.cn/v1",
+    "api_key": "",
+    "model": "Auto",
+    "recent_log_lines": 80
+  },
+  "kb": {
+    "manuals_dir": ""
+  }
+}

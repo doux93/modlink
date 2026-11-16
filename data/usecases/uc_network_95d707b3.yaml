@@ -1,0 +1,82 @@
+schema: modulink/diagflow@1
+id: uc_network_95d707b3
+name: 自动拨号配置
+kind: usecase
+category: network
+source: MR880A 通信流程示例
+verified: false
+applies_to:
+- mr880a
+steps:
+- id: s1
+  title: 查询当前是否开启自动激活PDN
+  send:
+  - AT+MUECONFIG="autoconn"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MUECONFIG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MUECONFIG（final={final}）
+    abort: true
+- id: s2
+  title: 关闭第7路cid PDN模组内部数据业务激活及拨号
+  send:
+  - AT+MUECONFIG="autoconn",0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MATREADY\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MATREADY（final={final}）
+    abort: true
+- id: s3
+  title: 手动激活第7路cid PDN
+  send:
+  - AT+MIPCALL=1,7
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s4
+  title: 查询当前自动拨号
+  send:
+  - AT+MDIALUPCFG="auto"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MDIALUPCFG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MDIALUPCFG（final={final}）
+    abort: true
+- id: s5
+  title: 配置为自动拨号（上位机网卡拨号）
+  send:
+  - AT+MDIALUPCFG="auto",1,0,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

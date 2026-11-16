@@ -1,0 +1,97 @@
+schema: modulink/diagflow@1
+id: uc_network_361d1832
+name: 5G LAN技术应用 · 5G LAN单路拨号
+kind: usecase
+category: network
+source: MR880A 通信流程示例
+verified: false
+applies_to:
+- mr880a
+steps:
+- id: s1
+  title: AT+MDIALUPCFG="nicmaxcnt",1
+  send:
+  - AT+MDIALUPCFG="nicmaxcnt",1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: at+mpsrat="NR"
+  send:
+  - at+mpsrat="NR"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: Windows系统下设置RNDIS拨号模式
+  send:
+  - AT+MDIALUPCFG="mode",0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: Linux系统下设置ECM拨号模式
+  send:
+  - AT+MDIALUPCFG="mode",1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: Linux系统下设置NCM拨号模式
+  send:
+  - AT+MDIALUPCFG="mode",2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: AT+CGDCONT=1,"Ethernet","APN","",0,0,0,0,1,1
+  send:
+  - AT+CGDCONT=1,"Ethernet","APN","",0,0,0,0,1,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s7
+  title: AT+MDIALUP=1,1
+  send:
+  - AT+MDIALUP=1,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MDIALUP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MDIALUP（final={final}）
+    abort: true

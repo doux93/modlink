@@ -1,0 +1,41 @@
+schema: modulink/diagflow@1
+id: uc_sms_302b6764
+name: 短信功能配置 · 设置中心号码
+kind: usecase
+category: sms
+source: MN316-S 通信流程示例
+verified: false
+applies_to:
+- m5311-e
+- mn316
+- mn316-s
+- mn327
+- mr880a
+steps:
+- id: s1
+  title: 设置当地短信中心号码。
+  send:
+  - AT+CSCA="+8613800230500"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 查询短信中心号码配置。
+  send:
+  - AT+CSCA?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CSCA\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CSCA（final={final}）
+    abort: true

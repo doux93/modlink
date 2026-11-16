@@ -1,0 +1,64 @@
+schema: modulink/diagflow@1
+id: uc_hardware_a8d47a97
+name: 模组温保功能
+kind: usecase
+category: hardware
+source: MR880A 通信流程示例
+verified: false
+applies_to:
+- mr880a
+steps:
+- id: s1
+  title: 查询温保功能开关情况
+  send:
+  - AT+MTHERMAN="enable"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MTHERMAN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MTHERMAN（final={final}）
+    abort: true
+- id: s2
+  title: 关闭温保功能
+  send:
+  - AT+MTHERMAN="enable",0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 查询当前温保阈值
+  send:
+  - AT+MTHERMAN="threshold"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MTHERMAN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MTHERMAN（final={final}）
+    abort: true
+- id: s4
+  title: 修改温保正常工作、限制发射功率、飞行模式、关机阈值
+  send:
+  - AT+MTHERMAN="threshold",90,91,105,110
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

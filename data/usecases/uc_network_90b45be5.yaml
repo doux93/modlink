@@ -1,0 +1,70 @@
+schema: modulink/diagflow@1
+id: uc_network_90b45be5
+name: 命令同步网络时间
+kind: usecase
+category: network
+source: M5310-E 通信流程示例
+verified: false
+applies_to:
+- m5310-e
+steps:
+- id: s1
+  title: AT+CMNTP[=<server>[,<port>,[<sync>,[<timeout>]]]]
+  send:
+  - AT+CMNTP[=<server>[,<port>,[<sync>,[<timeout>]]]]
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 向默认的NTP服务器（cn.ntp.org.cn）请求网络时间，且更新本地时钟。
+  send:
+  - AT+CMNTP
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 本地时间已同步更新到NTP网络时间。
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 向cn.ntp.org.cn服务器请求网络时间，且不更新本地时钟。
+  send:
+  - AT+CMNTP="ntp1.aliyun.com",123,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 由于AT+CMNTP未同步本地时钟，因此AT+CCLK?与AT+CMNTP返回结果存在一定误差。
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

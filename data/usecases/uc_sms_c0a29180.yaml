@@ -1,0 +1,68 @@
+schema: modulink/diagflow@1
+id: uc_sms_c0a29180
+name: PDU短信收发
+kind: usecase
+category: sms
+source: M5311-E 通信流程示例
+verified: false
+applies_to:
+- m5311-e
+- mn327
+steps:
+- id: s1
+  title: 配置PDU模式(默认)
+  send:
+  - AT+CMGF=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 发送PDU短信，PDU长度23字节，数据以ctrl-z（0x1A）结尾。
+  send:
+  - AT+CMGS=25
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGS（final={final}）
+    abort: true
+- id: s3
+  title: 列举未读短信
+  send:
+  - AT+CMGL=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGL（final={final}）
+    abort: true
+- id: s4
+  title: 读取编号为29的短信
+  send:
+  - AT+CMGR=29
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGR（final={final}）
+    abort: true

@@ -1,0 +1,55 @@
+schema: modulink/diagflow@1
+id: uc_socket_38456c6e
+name: IPv6入网配置 · 确认IPV6入网
+kind: usecase
+category: socket
+source: MR880A 通信流程示例
+verified: false
+applies_to:
+- mr880a
+steps:
+- id: s1
+  title: 确认模组已附着上网络
+  send:
+  - AT+CEREG?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CEREG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CEREG（final={final}）
+    abort: true
+- id: s2
+  title: 确认模组已附着上网络
+  send:
+  - AT+C5GREG?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+C5GREG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +C5GREG（final={final}）
+    abort: true
+- id: s3
+  title: 确认PDP已激活，并已获取IPv4和IPv6地址。
+  send:
+  - AT+CGPADDR
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGPADDR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGPADDR（final={final}）
+    abort: true

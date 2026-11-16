@@ -1,0 +1,30 @@
+﻿refactor(backend): 拆分 lib.rs 按域模块化 + 消除领域层反向依赖
+
+lib.rs 从 3582 行降至 82 行,仅保留 app build + handler 注册 + State 管理。
+代码按职责分散到三个层次,依赖方向纠正为领域层不再反向依赖传输层。
+
+新增模块:
+- config.rs:设置纯逻辑(default/merge/load_settings),配置层
+- types.rs:共享 DTO(从 ipc/ 提升),中性层,ipc 和 knowledge 共同依赖
+- ipc/:12 个 Tauri command 模块(serial/execution/diagnostic/stress/
+  capabilities/settings/ai/legacy/knowledge_cmds/log_analysis/common/types)
+- knowledge/:5 个知识中心子模块(catalog/authorization/manual/
+  capabilities/pack),原 2100 行单文件拆分
+
+依赖方向纠正:
+- knowledge/* 不再引用 crate::ipc(原 use crate::ipc::settings/types)
+- knowledge/* → crate::config、crate::types(中性层)
+- ipc/* → crate::config、crate::types(中性层)
+
+测试适配:
+- knowledge_caps_tests.rs:导入路径从 crate:: 改为 crate::knowledge::/
+  crate::ipc:: 子模块
+- regression.rs:SessionExecutor 路径更新
+
+验证:
+- cargo check 零错误零警告,cargo fmt --check 通过
+- modulink-core 58 个单测全部通过
+- src-tauri 测试可编译(运行受限于 windows-gnu 工具链既有问题)
+- 前端 vite build 通过
+- 应用可正常运行(setup 加载 41 画像 + 214 流程成功)
+- Tauri command 注册列表与拆分前一致,无遗漏

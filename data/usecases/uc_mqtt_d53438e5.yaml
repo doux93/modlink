@@ -1,0 +1,75 @@
+schema: modulink/diagflow@1
+id: uc_mqtt_d53438e5
+name: 缓存模式
+kind: usecase
+category: mqtt
+source: MQTT用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: AT+MQTTCFG="cached",0,1 /*配置为接收缓存模式*/
+  send:
+  - AT+MQTTCFG="cached",0,1 /*配置为接收缓存模式*/
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+MQTTCONN=0,"120.27.12.119",1883,"716335459","42
+  send:
+  - AT+MQTTCONN=0,"120.27.12.119",1883,"716335459","425089","SnMHaAOMCbQD90eADEGpMBPu8pI="
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: AT+MQTTSUB=0,"world",1,"hello",2 /*订阅主题*/
+  send:
+  - AT+MQTTSUB=0,"world",1,"hello",2 /*订阅主题*/
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTSUB\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTSUB（final={final}）
+    abort: true
+- id: s4
+  title: AT+MQTTREAD=0,1 /*读取缓存数据*/
+  send:
+  - AT+MQTTREAD=0,1 /*读取缓存数据*/
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MQTTREAD\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MQTTREAD（final={final}）
+    abort: true
+- id: s5
+  title: AT+MQTTDISC=0 /*断开连接*/
+  send:
+  - AT+MQTTDISC=0 /*断开连接*/
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

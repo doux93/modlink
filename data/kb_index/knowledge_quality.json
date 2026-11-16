@@ -1,0 +1,21 @@
+{
+  "schema": "modulink/knowledge-quality@3",
+  "scannedSourceTopicCount": 1959,
+  "excludedEnglishTopicCount": 16,
+  "sourceTopicCount": 1943,
+  "canonicalTopicCount": 1650,
+  "deduplicatedTopicCount": 293,
+  "mapUnitCount": 111,
+  "resolvedMapUnitCount": 76,
+  "unknownTopicCount": 169,
+  "unknownTopicRatio": 0.1024,
+  "sourceFragmentCollisionCount": 60,
+  "commandVariantCount": 575,
+  "sameMapSyntaxConflictCount": 0,
+  "crossMapModelSyntaxConflictCount": 0,
+  "capabilityRestrictionCount": 1085,
+  "unsupportedCommandRestrictionCount": 286,
+  "parameterValueRestrictionCount": 799,
+  "sameMapSyntaxConflicts": [],
+  "crossMapModelSyntaxConflicts": []
+}

@@ -1,0 +1,63 @@
+schema: modulink/diagflow@1
+id: uc_http_cc4f09cd
+name: HTTP示例 · 创建实例和参数设置
+kind: usecase
+category: http
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 120.27.12.119:10080" /*创建实例*/
+  send:
+  - 'AT+MHTTPCREATE="http:'
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MHTTPCREATE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MHTTPCREATE（final={final}）
+    abort: true
+- id: s2
+  title: 'AT+MHTTPCFG="header",0,"Connection: close" /*报头设置（'
+  send:
+  - 'AT+MHTTPCFG="header",0,"Connection: close" /*报头设置（根据实际需求设置）*/'
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: AT+MHTTPCFG="header",0
+  send:
+  - AT+MHTTPCFG="header",0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MHTTPCFG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MHTTPCFG（final={final}）
+    abort: true
+- id: s4
+  title: 'AT+MHTTPHEADER=0,0,0,"api-key: <YOUR_API_KEY>'
+  send:
+  - 'AT+MHTTPHEADER=0,0,0,"api-key: <YOUR_API_KEY>"'
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

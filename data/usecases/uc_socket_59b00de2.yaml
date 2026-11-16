@@ -1,0 +1,55 @@
+schema: modulink/diagflow@1
+id: uc_socket_59b00de2
+name: UDP/TCP数据发送 · TCP数据发送
+kind: usecase
+category: socket
+source: MN319-A 通信流程示例
+verified: false
+applies_to:
+- mn319-a
+steps:
+- id: s1
+  title: 1#建立TCP连接。
+  send:
+  - AT+MIPOPEN=1,"TCP","39.106.55.121",9000
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPOPEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPOPEN（final={final}）
+    abort: true
+- id: s2
+  title: 1#发送数据11Bytes。
+  send:
+  - AT+MIPSEND=1,11,"12345678900"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPSEND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPSEND（final={final}）
+    abort: true
+- id: s3
+  title: 1#关闭连接。
+  send:
+  - AT+MIPCLOSE=1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCLOSE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCLOSE（final={final}）
+    abort: true

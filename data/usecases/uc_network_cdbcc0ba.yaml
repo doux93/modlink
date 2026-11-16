@@ -1,0 +1,61 @@
+schema: modulink/diagflow@1
+id: uc_network_cdbcc0ba
+name: 驻网自动同步网络时间
+kind: usecase
+category: network
+source: ML302A 通信流程示例
+verified: false
+applies_to:
+- m5310-e
+- m5311-e
+- ml302a
+- ml302s
+- ml307s
+- ml551z
+- mn318
+- mn326
+- mn328
+- mr880a
+steps:
+- id: s1
+  title: AT+CCLK?
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CCLK\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CCLK（final={final}）
+    abort: true
+- id: s2
+  title: 等待网络注册成功
+  send:
+  - AT+CEREG?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CEREG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CEREG（final={final}）
+    abort: true
+- id: s3
+  title: AT+CCLK?
+  send:
+  - AT+CCLK?
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

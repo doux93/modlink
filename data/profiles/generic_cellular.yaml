@@ -1,0 +1,128 @@
+# 通用蜂窝模组画像：仅含 3GPP 标准指令，任何型号未识别时的兜底选择
+schema: modulink/profile@1
+id: generic
+name: "通用蜂窝模组 (3GPP 标准)"
+vendor: ""
+family: generic
+model_codes: []
+series: generic
+capabilities: [cellular, 3gpp, network-registration, pdp]
+support_level: generic
+# 无 detect —— 仅手动选择，且优先级最低
+ports:
+  - role: at
+    default_baud: 115200
+line_ending: "\r\n"
+urc_patterns:
+  - id: cereg_urc
+    pattern: '^\+CEREG: (?<stat>\d+)(,.*)?$'
+    label: "网络注册"
+    severity_field: stat
+    severity_map: { "0": error, "1": info, "2": warning, "3": error, "5": info }
+  - id: cpin_urc
+    pattern: '^\+CPIN: (?<state>.+)$'
+    label: "SIM 状态"
+    severity: info
+at_commands:
+  - cmd: "AT+CSQ"
+    syntax: "AT+CSQ"
+    category: network
+    risk: none
+    doc: "查询信号质量。rssi 0-31（99=无信号），dBm = rssi*2-113。"
+  - cmd: "AT+CPIN"
+    syntax: "AT+CPIN?"
+    category: sim
+    risk: none
+    doc: "查询 SIM 状态。READY=就绪。无卡返回 +CME ERROR: 10。"
+  - cmd: "AT+CEREG"
+    syntax: "AT+CEREG? / AT+CEREG=<n>"
+    category: network
+    risk: none
+    doc: "EPS 网络注册状态查询/URC 上报设置。"
+  - cmd: "AT+COPS"
+    syntax: "AT+COPS? / AT+COPS=?"
+    category: network
+    risk: none
+    doc: "查询当前运营商 / 扫描可用网络（扫网耗时可达 1-3 分钟）。"
+  - cmd: "AT+CGDCONT"
+    syntax: 'AT+CGDCONT=<cid>,"IP","<APN>"'
+    category: pdp
+    risk: none
+    doc: "定义 PDP 上下文(APN)。"
+  - cmd: "AT+CGACT"
+    syntax: "AT+CGACT=<state>,<cid>"
+    category: pdp
+    risk: none
+    doc: "激活/去激活 PDP。"
+  - cmd: "AT+CGPADDR"
+    syntax: "AT+CGPADDR=<cid>"
+    category: pdp
+    risk: none
+    doc: "查询 PDP 分配的 IP 地址。"
+  - cmd: "AT+CEER"
+    syntax: "AT+CEER"
+    category: debug
+    risk: none
+    doc: "查询最近一次错误的扩展原因（注册被拒/呼叫失败排障常用）。"
+  - cmd: "AT+CFUN"
+    syntax: "AT+CFUN=<fun>[,<rst>]"
+    category: system
+    risk: reboot
+    doc: "功能模式设置，带 rst 参数会重启模组——高危。"
+  - cmd: "AT+CGMM"
+    syntax: "AT+CGMM"
+    category: system
+    risk: none
+    doc: "查询模组型号标识，用于确认实际连接的型号。"
+  - cmd: "AT+CGMI"
+    syntax: "AT+CGMI"
+    category: system
+    risk: none
+    doc: "查询模组厂商标识。"
+  - cmd: "AT+CGMR"
+    syntax: "AT+CGMR"
+    category: system
+    risk: none
+    doc: "查询固件版本号。"
+  - cmd: "AT+CGSN"
+    syntax: "AT+CGSN"
+    category: system
+    risk: none
+    doc: "查询 IMEI。"
+  - cmd: "AT+CIMI"
+    syntax: "AT+CIMI"
+    category: sim
+    risk: none
+    doc: "查询 SIM 卡 IMSI。"
+  - cmd: "AT+CGATT"
+    syntax: "AT+CGATT? / AT+CGATT=<state>"
+    category: network
+    risk: none
+    doc: "查询/设置 PS 域附着状态。"
+  - cmd: "AT+CREG"
+    syntax: "AT+CREG? / AT+CREG=<n>"
+    category: network
+    risk: none
+    doc: "CS 网络注册状态查询/URC 上报设置。"
+  - cmd: "AT+CGREG"
+    syntax: "AT+CGREG? / AT+CGREG=<n>"
+    category: network
+    risk: none
+    doc: "GPRS 网络注册状态查询/URC 上报设置。"
+  - cmd: "ATI"
+    syntax: "ATI"
+    category: system
+    risk: none
+    doc: "查询产品标识信息。"
+  - cmd: "AT+CMEE"
+    syntax: "AT+CMEE=<n>"
+    category: debug
+    risk: none
+    doc: "设置 +CME ERROR 错误码上报格式；排障前建议设为 2 取详细描述。"
+diagnostics: [network_attach]
+error_code_tables: [cme_standard, cms_standard]
+intents:
+  - phrases: ["查信号", "信号强度"]
+    sequence: ["AT+CSQ"]
+  - phrases: ["查卡", "SIM卡状态"]
+    sequence: ["AT+CPIN?"]

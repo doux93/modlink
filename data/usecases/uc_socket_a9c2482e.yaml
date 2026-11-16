@@ -1,0 +1,39 @@
+schema: modulink/diagflow@1
+id: uc_socket_a9c2482e
+name: IPv6数据业务 · IPv6 DNS业务
+kind: usecase
+category: socket
+source: 通信流程示例
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: AT+MDNSGIP="www.deepspace6.net"
+  send:
+  - AT+MDNSGIP="www.deepspace6.net"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MDNSGIP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MDNSGIP（final={final}）
+    abort: true
+- id: s2
+  title: AT+MDNSGIP=www.taobao.com
+  send:
+  - AT+MDNSGIP=www.taobao.com
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MDNSGIP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MDNSGIP（final={final}）
+    abort: true

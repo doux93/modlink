@@ -1,0 +1,169 @@
+schema: modulink/diagflow@1
+id: uc_network_64910f5b
+name: 网络配置 · PDN激活与去激活及应用层网络拨号
+kind: usecase
+category: network
+source: ML302A 通信流程示例
+verified: false
+applies_to:
+- ml302a
+- ml305m
+- ml307g
+- ml307h
+- ml307n
+- ml307x
+- ml307y
+steps:
+- id: s1
+  title: 查询拨号状态
+  send:
+  - AT+MIPCALL?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s2
+  title: 配置PDP上下文
+  send:
+  - AT+CGDCONT=1,"IPV4V6","cmnet"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 激活PDP，建立应用层拨号连接。
+  send:
+  - AT+MIPCALL=1,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s4
+  title: 断开连接，需要断开网络时执行。
+  send:
+  - AT+MIPCALL=0,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s5
+  title: 配置PDP上下文
+  send:
+  - AT+CGDCONT=2,"IPV6"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: 配置PDP上下文
+  send:
+  - AT+CGDCONT=3,"IP"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s7
+  title: 激活第1路PDP，建立应用层拨号连接。
+  send:
+  - AT+MIPCALL=1,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s8
+  title: 激活第2路PDP，建立应用层拨号连接。
+  send:
+  - AT+MIPCALL=1,2
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s9
+  title: 激活第3路PDP，建立应用层拨号连接。
+  send:
+  - AT+MIPCALL=1,3
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s10
+  title: 飞行模式，断开所有连接并去激活PDP。
+  send:
+  - AT+CFUN=4
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s11
+  title: 打开协议栈，重新激活默认PDP。
+  send:
+  - AT+CFUN=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

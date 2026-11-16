@@ -1,0 +1,148 @@
+schema: modulink/diagflow@1
+id: uc_network_0d8fd1ee
+name: 锁定BAND
+kind: usecase
+category: network
+source: MR880A 通信流程示例
+verified: false
+applies_to:
+- mr880a
+steps:
+- id: s1
+  title: 设置模组支持的制式为LTE
+  send:
+  - AT+MPSRAT="LTE"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 设置模组支持的制式为NR
+  send:
+  - AT+MPSRAT="NR"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 设置模组支持的制式优先级为NR、LTE。
+  send:
+  - AT+MPSRAT="NR","LTE"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 锁定LTE制式到B40
+  send:
+  - AT+MBAND="LTE",40
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 关闭协议栈,AT+CFUN=0执行成功后LTE制式锁定到B40将保存至Flash重启仍然生效
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: 打开协议栈
+  send:
+  - AT+CFUN=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s7
+  title: 查询LTE
+  send:
+  - AT+MBAND="LTE"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MBAND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MBAND（final={final}）
+    abort: true
+- id: s8
+  title: 锁定NR制式到N41
+  send:
+  - AT+MBAND="NR",41
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s9
+  title: 关闭协议栈,AT+CFUN=0执行成功后LTE制式锁定到N41将保存至Flash重启仍然生效
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s10
+  title: 打开协议栈
+  send:
+  - AT+CFUN=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s11
+  title: 查询NR
+  send:
+  - AT+MBAND="NR"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MBAND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MBAND（final={final}）
+    abort: true

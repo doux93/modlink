@@ -1,0 +1,40 @@
+[package]
+name = "modulink-studio"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "modulink_studio_lib"
+# 桌面端仅需 rlib；staticlib/cdylib 是移动端用的，且在 windows-gnu 工具链下
+# 会触发 "export ordinal too large" 链接错误
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+modulink-core = { path = "../modulink-core" }
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+serialport = "4"
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros"] }
+regex = "1"
+thiserror = "2"
+parking_lot = "0.12"
+chrono = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Credentials"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }

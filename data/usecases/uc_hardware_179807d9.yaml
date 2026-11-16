@@ -1,0 +1,52 @@
+schema: modulink/diagflow@1
+id: uc_hardware_179807d9
+name: GPIO
+kind: usecase
+category: hardware
+source: MN318 通信流程示例
+verified: false
+applies_to:
+- mn318
+steps:
+- id: s1
+  title: 查询Pin 11当前GPIO配置
+  send:
+  - AT+MGPIO=11
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MGPIO\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MGPIO（final={final}）
+    abort: true
+- id: s2
+  title: 设置Pin 11为输出高电平
+  send:
+  - AT+MGPIO=11,2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 读取Pin 11的电平值
+  send:
+  - AT+MGPIO=11,0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MGPIO\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MGPIO（final={final}）
+    abort: true

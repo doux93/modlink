@@ -1,0 +1,57 @@
+schema: modulink/diagflow@1
+id: uc_socket_b43cf5fd
+name: UDP/TCP数据接收 · UDP普通模式
+kind: usecase
+category: socket
+source: ML302A 通信流程示例
+verified: false
+applies_to:
+- ml302a
+- ml302s
+- mr880a
+steps:
+- id: s1
+  title: 0#建立UDP连接，普通接收模式。
+  send:
+  - AT+MIPOPEN=0,"UDP","120.27.12.119",2016,60,0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPOPEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPOPEN（final={final}）
+    abort: true
+- id: s2
+  title: 0#发送数据11Bytes，序列号为1。
+  send:
+  - AT+MIPSEND=0,11,"12345678900"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPSEND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPSEND（final={final}）
+    abort: true
+- id: s3
+  title: 0#关闭连接。
+  send:
+  - AT+MIPCLOSE=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCLOSE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCLOSE（final={final}）
+    abort: true

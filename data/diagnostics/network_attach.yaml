@@ -1,0 +1,160 @@
+# 一键入网体检流程 —— 诊断引擎的数据驱动定义
+# FAE 可直接修改本文件调整检测步骤/阈值/建议话术，热重载生效
+schema: modulink/diagflow@1
+id: network_attach
+name: "入网连通性推荐检查"
+applies_to: ["cat1", "cat4", "redcap", "generic"]
+kind: checkup
+category: checkup
+source: "内置推荐检查"
+verified: true
+execution_mode: readonly
+steps:
+  - id: at_alive
+    title: "AT 通道"
+    send: ["AT"]
+    timeout_ms: 2000
+    evaluate:
+      - when: "final == 'OK'"
+        result: pass
+        detail: "AT 通道正常"
+      - default: true
+        result: fail
+        reason: "AT 无响应（{final}）"
+        suggestion: "检查串口线序/波特率；确认连接的是 AT 口而不是日志口"
+        abort: true
+
+  - id: module_info
+    title: "模组与固件"
+    send: ["ATI", "AT+CGMM", "AT+CGMR"]
+    timeout_ms: 3000
+    optional: true
+    evaluate:
+      - when: "final == 'OK'"
+        result: pass
+        detail: "已采集模组型号和固件版本"
+      - default: true
+        result: warn
+        reason: "模组信息采集不完整"
+        suggestion: "可在控制台分别执行 ATI、AT+CGMM、AT+CGMR 确认支持情况"
+
+  - id: sim_check
+    title: "SIM 卡"
+    send: ["AT+CPIN?"]
+    timeout_ms: 3000
+    parse: '\+CPIN: (?<state>.+)'
+    evaluate:
+      - when: "state == 'READY'"
+        result: pass
+        detail: "SIM 就绪"
+      - when: "state == 'SIM PIN'"
+        result: warn
+        reason: "SIM 卡设置了 PIN 码"
+        suggestion: "执行 AT+CPIN=<pin> 解锁，或用手机取消 PIN 保护"
+        abort: true
+      - default: true
+        result: fail
+        reason: "SIM 未就绪：{state}"
+        suggestion: "重新插拔 SIM；错误码含义见行内解读（CME 10/13/14）"
+        abort: true
+
+  - id: sim_identity
+    title: "SIM 身份"
+    send: ["AT+CCID", "AT+CIMI"]
+    timeout_ms: 3000
+    optional: true
+    evaluate:
+      - when: "final == 'OK'"
+        result: pass
+        detail: "已采集 ICCID 和 IMSI"
+      - default: true
+        result: warn
+        reason: "ICCID/IMSI 采集不完整"
+        suggestion: "部分型号使用 AT+ICCID；可根据模组手册调整诊断流程"
+
+  - id: signal
+    title: "信号质量"
+    send: ["AT+CSQ"]
+    timeout_ms: 3000
+    parse: '\+CSQ: (?<rssi>\d+),(?<ber>\d+)'
+    evaluate:
+      - when: "rssi == 99"
+        result: fail
+        reason: "无信号 (rssi=99)"
+        suggestion: "检查天线是否接好；确认所在位置有网络覆盖；AT+COPS=? 扫网验证"
+        abort: true
+      - when: "rssi < 10"
+        result: warn
+        reason: "信号弱 (rssi={rssi}, 约 {dbm} dBm)"
+        suggestion: "改善天线位置/更换天线；弱信号会导致注册慢、连接易断"
+      - default: true
+        result: pass
+        detail: "rssi={rssi} (约 {dbm} dBm)"
+
+  - id: reg
+    title: "网络注册"
+    send: ["AT+CEREG?"]
+    timeout_ms: 3000
+    parse: '\+CEREG: \d+,(?<stat>\d+)'
+    retry: { times: 10, interval_ms: 2000, until: "stat == 1 || stat == 5" }
+    evaluate:
+      - when: "stat == 1 || stat == 5"
+        result: pass
+        detail: "已注册{roam}"
+      - when: "stat == 3"
+        result: fail
+        reason: "注册被网络拒绝"
+        suggestion: "AT+CEER 查拒绝原因；确认 SIM 套餐正常、无机卡绑定限制"
+        collect: ["AT+CEER", "AT+COPS?"]
+        abort: true
+      - default: true
+        result: fail
+        reason: "等待 20 秒仍未注册 (stat={stat})"
+        suggestion: "结合信号强度判断；AT+COPS=? 扫网确认能搜到运营商"
+        collect: ["AT+COPS?"]
+        abort: true
+
+  - id: pdp
+    title: "PDP 激活"
+    send: ["AT+CGDCONT?", "AT+CGACT=1,1", "AT+CGPADDR=1"]
+    timeout_ms: 12000
+    parse: '\+CGPADDR: 1,"?(?<ip>[0-9.]+)"?'
+    evaluate:
+      - when: "ip != '' && ip != '0.0.0.0'"
+        result: pass
+        detail: "已获取 IP: {ip}"
+      - default: true
+        result: fail
+        reason: "PDP 激活失败或未获取 IP"
+        suggestion: "执行 AT+CGDCONT? 检查当前 APN，并与 SIM 卡运营商或专网配置核对；确认套餐流量正常"
+        abort: true
+
+  - id: operator
+    title: "运营商信息"
+    send: ["AT+COPS?"]
+    timeout_ms: 3000
+    parse: '\+COPS: \d+,\d+,"?(?<operator>[^",]+)'
+    optional: true
+    evaluate:
+      - when: "operator != ''"
+        result: pass
+        detail: "当前运营商：{operator}"
+      - default: true
+        result: warn
+        reason: "未解析到运营商名称"
+        suggestion: "查看原始响应确认模组返回格式"
+
+  - id: dns_tcp
+    title: "数据连通"
+    send: ["AT+MDNSGIP=\"www.baidu.com\""]
+    timeout_ms: 10000
+    parse: '\+MDNSGIP: .*?"(?<ip>[0-9.]+)"'
+    optional: true
+    evaluate:
+      - when: "ip != ''"
+        result: pass
+        detail: "DNS 解析正常 ({ip})"
+      - default: true
+        result: warn
+        reason: "DNS 解析未成功（该型号可能不支持 MDNSGIP 指令）"
+        suggestion: "可改用业务指令直接验证（如 MIPOPEN 连业务服务器）"

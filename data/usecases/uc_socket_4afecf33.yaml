@@ -1,0 +1,67 @@
+schema: modulink/diagflow@1
+id: uc_socket_4afecf33
+name: UDP/TCP数据接收 · TCP普通模式
+kind: usecase
+category: socket
+source: MN328 通信流程示例
+verified: false
+applies_to:
+- mn328
+steps:
+- id: s1
+  title: 设置为普通模式
+  send:
+  - AT+ZNMI=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 1#建立TCP连接。
+  send:
+  - AT+ZOPEN=0,"120.27.12.119",2016
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZOPEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZOPEN（final={final}）
+    abort: true
+- id: s3
+  title: 1#发送数据11Bytes。
+  send:
+  - AT+ZSEND=1,11,"12345678900"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZRECV\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZRECV（final={final}）
+    abort: true
+- id: s4
+  title: 1#关闭连接。
+  send:
+  - AT+ZCLOSE=1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZSTATE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZSTATE（final={final}）
+    abort: true

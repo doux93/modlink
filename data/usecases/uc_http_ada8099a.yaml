@@ -1,0 +1,90 @@
+schema: modulink/diagflow@1
+id: uc_http_ada8099a
+name: HTTP示例 · Chunked模式下的POST请求
+kind: usecase
+category: http
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: api.heclouds.com/" //创建实例
+  send:
+  - 'AT+MHTTPCREATE="http:'
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MHTTPCREATE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MHTTPCREATE（final={final}）
+    abort: true
+- id: s2
+  title: 设置为chunked模式
+  send:
+  - AT+MHTTPCFG="chunked",0,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 设置转义字符输入
+  send:
+  - AT+MHTTPCFG="encoding",0,2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 设置报头
+  send:
+  - 'AT+MHTTPCFG="header",0,"api-key: <YOUR_API_KEY>"'
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 发送POST请求
+  send:
+  - AT+MHTTPREQUEST=0,2,0,"/devices/622957377/datastreams"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MHTTPURC\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MHTTPURC（final={final}）
+    abort: true
+- id: s6
+  title: 发送数据
+  send:
+  - AT+MHTTPCONTENT=0,0,0,"{"id":"speed1"\r,"tags":["mobile"],"unit":"m/s"\r,"unit_symbol":"m/s"}"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MHTTPURC\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MHTTPURC（final={final}）
+    abort: true

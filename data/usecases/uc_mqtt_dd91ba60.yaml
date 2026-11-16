@@ -1,0 +1,36 @@
+schema: modulink/diagflow@1
+id: uc_mqtt_dd91ba60
+name: 缓存模式 · 读取缓存数据
+kind: usecase
+category: mqtt
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: AT+MHTTPREAD=0,0,225 /*读取报头*/
+  send:
+  - AT+MHTTPREAD=0,0,225 /*读取报头*/
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+MHTTPREAD=0,1,145 /*读取content*/
+  send:
+  - AT+MHTTPREAD=0,1,145 /*读取content*/
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MHTTPREAD\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MHTTPREAD（final={final}）
+    abort: true

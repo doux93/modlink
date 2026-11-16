@@ -1,0 +1,71 @@
+schema: modulink/diagflow@1
+id: uc_power_b3e24e0d
+name: 浅睡眠 · 浅睡眠控制
+kind: usecase
+category: power
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+- mn316a
+steps:
+- id: s1
+  title: AT+NV=SET,STANDBY,1
+  send:
+  - AT+NV=SET,STANDBY,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+NV=SET,STANDBY,0
+  send:
+  - AT+NV=SET,STANDBY,0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: AT+STANDBY=0
+  send:
+  - AT+STANDBY=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: AT+STANDBY=1
+  send:
+  - AT+STANDBY=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: AT+STANDBY=0,30
+  send:
+  - AT+STANDBY=0,30
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

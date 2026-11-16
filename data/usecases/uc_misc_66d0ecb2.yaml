@@ -1,0 +1,70 @@
+schema: modulink/diagflow@1
+id: uc_misc_66d0ecb2
+name: NV配置
+kind: usecase
+category: misc
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+steps:
+- id: s1
+  title: 查询IPALIVE的值是否为1，为1则不需要配置。
+  send:
+  - AT+NV=GET,IPALIVE
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 查询RAI的值是否为1，为1则不需要配置。
+  send:
+  - AT+NV=GET,RAI
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 查询OFFTIME的值是否为0，为0则不需要配置。
+  send:
+  - AT+NV=GET,OFFTIME
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 查询DOWNDATA的值是否为1，为1则不需要配置。
+  send:
+  - AT+NV=GET,DOWNDATA
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 保存NV并重启，因NV值未做改变，此步省略。
+  send:
+  - AT+NRB
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

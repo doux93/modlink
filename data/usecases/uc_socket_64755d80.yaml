@@ -1,0 +1,77 @@
+schema: modulink/diagflow@1
+id: uc_socket_64755d80
+name: IPv6数据业务 · DNS优先级配置
+kind: usecase
+category: socket
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+- mn316a
+steps:
+- id: s1
+  title: AT+MDNSCFG="priority"
+  send:
+  - AT+MDNSCFG="priority"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MDNSCFG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MDNSCFG（final={final}）
+    abort: true
+- id: s2
+  title: AT+CMNTP="cn.ntp.org.cn"
+  send:
+  - AT+CMNTP="cn.ntp.org.cn"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 配置DNS为IPv6优先，IPv4第二。
+  send:
+  - AT+MDNSCFG=”priority”,3
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: AT+MDNSCFG=”priority”
+  send:
+  - AT+MDNSCFG=”priority”
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MDNSCFG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MDNSCFG（final={final}）
+    abort: true
+- id: s5
+  title: AT+CMNTP="cn.ntp.org.cn"
+  send:
+  - AT+CMNTP="cn.ntp.org.cn"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

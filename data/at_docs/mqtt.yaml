@@ -1,0 +1,795 @@
+schema: modulink/at_docs@1
+protocol: MQTT
+applies_to:
+- ML302A
+- ML302S
+- ML305A
+- ML305M
+- ML305U
+- ML307A
+- ML307B
+- ML307C
+- ML307G
+- ML307H
+- ML307M
+- ML307N
+- ML307R
+- ML307S
+- ML307X
+- ML307Y
+- MN316
+- MN316-S
+- MN316A
+- MN318
+- MN319
+- MN319-A
+- MN326
+- MN326A
+- MN327
+- MN328
+- MR880A
+source: anythingllm_kb/at_commands (DITA 手册自动提取)
+commands:
+- cmd: AT+MQTTCFG
+  syntax: AT+MQTTCFG="version",<connect_id>[,<version>]
+  category: mqtt
+  kind: command
+  risk: none
+  title: AT+MQTTCFG 配置连接参数
+  doc: '该命令用于配置或查询MQTT参数，使用时应注意参数范围。模组掉电后配置参数不保存。
+
+
+    参数：
+
+    `<connect_id>`整型，MQTT客户端标识ID。范围：0~5。（注：MN316A/MN326A/MN319/MN319-A范围：0~2。）
+
+
+    `<version>`整型，MQTT协议版本。默认值4。（注：当前仅支持`<version>`=4（MQTT协议v3.1.1）。）
+
+
+    - `3`: MQTT协议v3.1
+
+    - `4`: MQTT协议v3.1.1
+
+
+    `<cid>`整型，MQTT客户端待使用PDP，范围与平台相关，默认不指定。（注：MN316/MN316A/MN318/MN319/MN319-A/MN326/MR880A/MN326A/M5310-E/MN327/MN328：不支持该参数配置。
+
+
+    ML302A/ML305A/ML307A/ML302S/ML307S/ML307R/ML307C范围：1~15，默认值1。
+
+
+    ML307B范围 0~4，默认值0。
+
+
+    ML307G/ML307H范围：1~5，默认值1。
+
+
+    ML305U范围：1~7，默认值1。
+
+
+    ML305M/ML307M/ML307N范围：1~8，默认不指定，指定时需保证支持cid已激活。
+
+
+    ML307X/ML307Y范围：1~15，默认不指定，指定时需保证支持cid已激活。）
+
+
+    `<ssl_enable>`整型，配置MQTT SSL模式。默认值0。（注：MN316A/MN318/MN319/MN319-A/MN326A/M5310-E/MN327/MN328/ML307H-GU/ML307H-GC：不支持该参数配置。）
+
+
+    - `0`: 使用普通TCP连接
+
+    - `1`: 使用SSL TCP连接
+
+
+    `<ssl_id>`整型，SSL上下文索引，范围可参见文档《SSL用户手册》。（注：MN316A/MN318/MN319/MN319-A/MN326A/M5310-E/MN327/MN328/ML307H-GU/ML307H-GC：不支持该参数配置。
+
+
+    ML302A/ML305A/ML307A/ML302S/ML307S/ML305U/ML307R/ML307B/ML307C/ML305M/ML307G/MR880A/ML307H-DU/ML307H-DC/ML307H-AU/ML307H-BU/ML307H-MU/ML307M/ML307N/ML307X/ML307Y范围：0~5。）
+
+
+    `<keepalive_time>`整型，保活时间。范围：0或60~65535；默认值120；单位：s。该参数定义从客户端接收消息的最大间隔时间，在1.5倍的设置时间内，若服务器未从客户端收到消息，则默认客户端发送了
+    DISCONNECT消息，因此服务器会断开客户端连接。
+
+
+    - `0`: 标识不断开连接
+
+    - `≥60`: 保活时间
+
+
+    `<clean_session>`整型，配置会话类型。默认值0。
+
+
+    - `0`: 服务端必须根据当前的会话状态恢复与客户端的通信
+
+    - `1`: 服务端必须清除之前的会话启动一个新的会话与客户端通信
+
+
+    `<retrans_interval>`整型，数据包重传初始间隔时间。范围：20~60；单位：s。默认值20。每次传输超时的总时间为`<retrans_interval>`*（2^<retry_times>+1-1）。
+
+
+    `<retry_times>`整型，数据包传输超时后重发次数。范围：0~3，默认值0，重传时模组自动填充`<dup>`重传标志。
+
+
+    `<will_flag>`整型，配…(截断，完整内容见知识库)'
+  examples:
+  - 'AT+MQTTCFG="pingresp",1,1
+
+    OK
+
+    AT+MQTTCFG="encoding",0
+
+    +MQTTCFG: "encoding",0,0
+
+    OK'
+  source: developmentdomain/mqttusermanual/topics/r_at_mqttcfg.dita
+  models:
+  - ML302A
+  - ML302S
+  - ML305A
+  - ML305M
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307G
+  - ML307H
+  - ML307M
+  - ML307N
+  - ML307R
+  - ML307S
+  - ML307X
+  - ML307Y
+  - MN316
+  - MN316-S
+  - MN316A
+  - MN318
+  - MN319
+  - MN319-A
+  - MN326
+  - MN326A
+  - MN327
+  - MN328
+  - MR880A
+  sources:
+  - developmentdomain/mqttusermanual/topics/r_at_mqttcfg.dita
+- cmd: AT+MQTTCONN
+  syntax: AT+MQTTCONN=<connect_id>,<host>[,<port>[,<clientID>,<user>,<passwd>]]
+  category: mqtt
+  kind: command
+  risk: none
+  title: AT+MQTTCONN 连接
+  doc: '该命令用于连接至MQTT或MQTTS服务器。
+
+
+    参数：
+
+    `<connect_id>`整型，MQTT客户端标识符。范围：0~5。（注：MN316A/MN326A/MN319/MN319-A范围：0~2。）
+
+
+    `<host>`字符串，MQTT服务器IP地址或域名，最大长度128。
+
+
+    `<port>`整型，MQTT服务器端口，范围：0~65535，省略时为默认值1883。
+
+
+    `<clientID>`字符串，终端ID，最大长度128。
+
+
+    `<user>`字符串，登录用户名，最大长度128。
+
+
+    `<passwd>`字符串，登录密码或鉴权信息，最大长度256。
+
+
+    `<conn_state>`整型，MQTT客户端状态。参考URC信息上报。
+
+
+    - `0`: 连接成功
+
+    - `1`: 正在重连
+
+    - `2`: 客户端断开
+
+    - `3`: 服务器拒绝
+
+    - `4`: 服务器断开
+
+    - `5`: ping超时
+
+    - `6`: 网络异常
+
+    - `255`: 未知错误'
+  examples:
+  - 'AT+MQTTCONN=0,"mqtt.heclouds.com",6002,"716335458","425089","SnMHaAOMCbQD90eADEGpMBPu8pI="
+
+    OK
+
+    +MQTTURC: "conn",0,0'
+  source: developmentdomain/mqttusermanual/topics/r_at_mqttconn.dita
+  models:
+  - ML302A
+  - ML302S
+  - ML305A
+  - ML305M
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307G
+  - ML307H
+  - ML307M
+  - ML307N
+  - ML307R
+  - ML307S
+  - ML307X
+  - ML307Y
+  - MN316
+  - MN316-S
+  - MN316A
+  - MN318
+  - MN319
+  - MN319-A
+  - MN326
+  - MN326A
+  - MN327
+  - MN328
+  - MR880A
+  sources:
+  - developmentdomain/mqttusermanual/topics/r_at_mqttconn.dita
+- cmd: AT+MQTTSUB
+  syntax: AT+MQTTSUB=<connect_id>,<topic>,<qos>[,<topic1>,<qos1>..]
+  category: mqtt
+  kind: command
+  risk: none
+  title: AT+MQTTSUB 订阅主题
+  doc: '该命令支持用于订阅主题。
+
+
+    参数：
+
+    `<connect_id>`整型，MQTT客户端标识符。范围：0~5。（注：MN316A/MN326A/MN319/MN319-A范围：0~2。）
+
+
+    `<topic>`字符串，订阅的主题。（注：ML302A/ML305A/ML307A/ML302S/ML307S/ML307R/ML307B/ML307C/ML305M/ML307G/ML307H/MR880A/ML307X/ML307Y/ML307M/ML307N：长度最大为256。）
+
+
+    `<qos>`整型，消息交付质量等级。
+
+
+    - `0`: 最多发送一次
+
+    - `1`: 最少发送一次
+
+    - `2`: 只发送一次
+
+
+    `<mid>`整型，数据包标识。范围：0~65535。
+
+
+    `<code>`整型， 对应订阅时设置的QoS，订阅失败时值为128。'
+  examples:
+  - 'AT+MQTTSUB=0,"world",1,"hello",2
+
+    +MQTTSUB: 0,35270
+
+    OK
+
+    +MQTTURC: "suback",0,35270,1,2
+
+    AT+MQTTSUB=0
+
+    +MQTTSUB: "world",1,"hello",2
+
+    OK'
+  source: developmentdomain/mqttusermanual/topics/r_at_mqttsub.dita
+  models:
+  - ML302A
+  - ML302S
+  - ML305A
+  - ML305M
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307G
+  - ML307H
+  - ML307M
+  - ML307N
+  - ML307R
+  - ML307S
+  - ML307X
+  - ML307Y
+  - MN316
+  - MN316-S
+  - MN316A
+  - MN318
+  - MN319
+  - MN319-A
+  - MN326
+  - MN326A
+  - MN327
+  - MN328
+  - MR880A
+  sources:
+  - developmentdomain/mqttusermanual/topics/r_at_mqttsub.dita
+- cmd: AT+MQTTUNSUB
+  syntax: AT+MQTTUNSUB=<connect_id>,<topic>[,<topic1>…]
+  category: mqtt
+  kind: command
+  risk: none
+  title: AT+MQTTUNSUB 取消订阅
+  doc: '该命令用于取消订阅。
+
+
+    参数：
+
+    `<connect_id>`整型，MQTT客户端标识符。范围：0~5。（注：MN316A/MN326A/MN319/MN319-A范围：0~2。）
+
+
+    `<topic>`字符串，取消订阅的主题。（注：ML302A/ML305A/ML307A/ML302S/ML307S/ML307R/ML307B/ML307C/ML305M/ML307G/MR880A/ML307H/ML307M/ML307N：长度最大为256。）
+
+
+    `<mid>`整型，数据包标识符。范围：0~65535。'
+  examples:
+  - 'AT+MQTTUNSUB=0,"world"
+
+    +MQTTUNSUB: 0,18795
+
+    OK
+
+    +MQTTURC: "unsuback",0,18795'
+  source: developmentdomain/mqttusermanual/topics/r_at_mqttunsub.dita
+  models:
+  - ML302A
+  - ML302S
+  - ML305A
+  - ML305M
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307G
+  - ML307H
+  - ML307M
+  - ML307N
+  - ML307R
+  - ML307S
+  - ML307X
+  - ML307Y
+  - MN316
+  - MN316-S
+  - MN316A
+  - MN318
+  - MN319
+  - MN319-A
+  - MN326
+  - MN326A
+  - MN327
+  - MN328
+  - MR880A
+  sources:
+  - developmentdomain/mqttusermanual/topics/r_at_mqttunsub.dita
+- cmd: AT+MQTTPUB
+  syntax: AT+MQTTPUB=<connect_id>,<topic>,<qos>,<retain>,<dup>,<msg_len>[,<message>]
+  category: mqtt
+  kind: command
+  risk: none
+  title: AT+MQTTPUB 发布消息
+  doc: '该命令用于向服务器发送指定topic的消息，使用时根据消息性质选择QoS等级。
+
+
+    参数：
+
+    `<connect_id>`整型，MQTT客户端标识。范围：0~5。（注：MN316A/MN326A/MN319/MN319-A范围：0~2。）
+
+
+    `<topic>`字符串，发布的主题。（注：ML302A/ML305A/ML307A/ML302S/ML307S/ML307R/ML307B/ML307C/ML305M/ML307G/MR880A/ML307M/ML307N/ML307H：长度最大为256。）
+
+
+    `<qos>`整型，发布消息质量等级。范围：0~2。
+
+
+    `<retain>`整型，服务器是否存储该消息。
+
+
+    - `0`: 服务器不存储该消息
+
+    - `1`: 服务器储存该消息，并向新订阅者发送最新订阅消息。
+
+
+    `<dup>`整型， 重发标志，范围：0~1。数据发送失败后用户主动重发数据请置1，发送新消息一般设置为0。
+
+
+    `<msg_len>`整型，待发布消息长度。当输入模式设置为Hex字符串时，消息长度为转换后的长度；设置为其他模式即表示原始输入的数据长度；长度设置为0时，按照实际输入的数据发送。（注：ML302A/ML305A/ML307A/ML302S/ML307S/ML307R/ML307B/ML307C/ML305M/ML307G/ML307M/ML307N/ML307H命令中直接输入数据和数据模式下的范围：0~1024；单位：字节。
+
+
+    MR880A命令中直接输入数据时的范围：0~2048；数据模式下的范围：0~8192；单位：字节。
+
+
+    ML307X/ML307Y命令中直接输入数据时的范围：0~2048；数据模式下的范围：0~4000；单位：字节。）
+
+
+    `<message>`字符串，待发布消息，当此参数省略时进入数据模式。（注：M5310-E/MN327/MN328/MN326A/MN316/MN316-S/MN316A/MN318/MN319/MN319-A/MN326：不支持进入数据模式。
+
+
+    ML307X/ML307Y：在数据模式下，输入数据达到指定长度或超过10s时自动发送数据。
+
+
+    MR880A：在数据模式下，输入数据达到指定长度或超过10s后自动发送数据，`<msg_len>`设置为0时，输入`ctrl+z`也将发送数据。数据模式最大发送长度为8192，当配置的`<msg_len>`超过8192时按照8192截取计算。）
+
+
+    `<mid>`整型，数据包标识。范围：0~65535。
+
+
+    `<length>`整型，已发送MQTT报文长度。'
+  examples:
+  - 'AT+MQTTPUB=0,"world",0,0,0,4,"3242"
+
+    +MQTTPUB: 0,18797,13
+
+    OK'
+  - 'AT+MQTTPUB=0,"world",1,0,0,4,"3242"
+
+    +MQTTPUB: 0,18798,15
+
+    OK
+
+    +MQTTURC: "puback",0,18798,0'
+  source: developmentdomain/mqttusermanual/topics/r_at_mqttpub.dita
+  models:
+  - ML302A
+  - ML302S
+  - ML305A
+  - ML305M
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307G
+  - ML307H
+  - ML307M
+  - ML307N
+  - ML307R
+  - ML307S
+  - ML307X
+  - ML307Y
+  - MN316
+  - MN316-S
+  - MN316A
+  - MN318
+  - MN319
+  - MN319-A
+  - MN326
+  - MN326A
+  - MN327
+  - MN328
+  - MR880A
+  sources:
+  - developmentdomain/mqttusermanual/topics/r_at_mqttpub.dita
+- cmd: AT+MQTTREAD
+  syntax: AT+MQTTREAD=<connect_id>
+  category: mqtt
+  kind: command
+  risk: none
+  title: AT+MQTTREAD 读取消息
+  doc: '该命令用于缓存模式下，读取缓存中的消息。
+
+
+    参数：
+
+    `<connect_id>`整型，MQTT客户端标识。范围：0~5。
+
+
+    `<count>`整型，读取消息条数。范围：1~当前缓存消息条数。
+
+
+    `<store_msgs>`整型， 表示缓存中有n条数据。
+
+
+    - `0`: 无缓存消息
+
+    - `n>0`: 缓存区有n条数据
+
+
+    `<total_len>`整型，表示当前已缓存数据长度。
+
+
+    `<mid>`整型，数据包标识。范围：0~65535。
+
+
+    `<topic>`字符串， 接收到的主题名。
+
+
+    `<payload_len>`整型，本次读取到的payload长度。
+
+
+    `<payload>`字符串，本次读取到的payload内容。
+
+
+    > 注意：NB-IoT模组暂不支持该命令。'
+  examples: []
+  source: developmentdomain/mqttusermanual/topics/r_at_mqttread.dita
+  models:
+  - ML302A
+  - ML302S
+  - ML305A
+  - ML305M
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307G
+  - ML307H
+  - ML307M
+  - ML307N
+  - ML307R
+  - ML307S
+  - ML307X
+  - ML307Y
+  - MN316
+  - MN316-S
+  - MN316A
+  - MN318
+  - MN319
+  - MN319-A
+  - MN326
+  - MN326A
+  - MN327
+  - MN328
+  - MR880A
+  sources:
+  - developmentdomain/mqttusermanual/topics/r_at_mqttread.dita
+- cmd: AT+MQTTSTATE
+  syntax: AT+MQTTSTATE=<connect_id>
+  category: mqtt
+  kind: command
+  risk: none
+  title: AT+MQTTSTATE 查询状态
+  doc: '该命令用于查询MQTT连接状态。
+
+
+    参数：
+
+    `<connect_id>`整型，MQTT客户端标识。范围：0~5。（注：MN316A/MN326A/MN319/MN319-A范围：0~2。）
+
+
+    `<state>`整型，MQTT连接状态。
+
+
+    - `1`: 正在连接或重连
+
+    - `2`: 连接成功
+
+    - `3`: 连接断开
+
+    - `4~255`: 保留'
+  examples:
+  - 'AT+MQTTSTATE=0
+
+    +MQTTSTATE: 2
+
+    OK'
+  source: developmentdomain/mqttusermanual/topics/r_at_mqttstate.dita
+  models:
+  - ML302A
+  - ML302S
+  - ML305A
+  - ML305M
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307G
+  - ML307H
+  - ML307M
+  - ML307N
+  - ML307R
+  - ML307S
+  - ML307X
+  - ML307Y
+  - MN316
+  - MN316-S
+  - MN316A
+  - MN318
+  - MN319
+  - MN319-A
+  - MN326
+  - MN326A
+  - MN327
+  - MN328
+  - MR880A
+  sources:
+  - developmentdomain/mqttusermanual/topics/r_at_mqttstate.dita
+- cmd: AT+MQTTDISC
+  syntax: AT+MQTTDISC=<connect_id>
+  category: mqtt
+  kind: command
+  risk: none
+  title: AT+MQTTDISC 主动断开连接
+  doc: '该命令用于主动断开连接。
+
+
+    参数：
+
+    `<connect_id>`整型，MQTT客户端标识。范围：0~5。（注：MN316A/MN326A/MN319/MN319-A范围：0~2。）'
+  examples:
+  - 'AT+MQTTDISC=0
+
+    OK
+
+    +MQTTURC: "conn",0,2'
+  source: developmentdomain/mqttusermanual/topics/r_at_mqttdisc.dita
+  models:
+  - ML302A
+  - ML302S
+  - ML305A
+  - ML305M
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307G
+  - ML307H
+  - ML307M
+  - ML307N
+  - ML307R
+  - ML307S
+  - ML307X
+  - ML307Y
+  - MN316
+  - MN316-S
+  - MN316A
+  - MN318
+  - MN319
+  - MN319-A
+  - MN326
+  - MN326A
+  - MN327
+  - MN328
+  - MR880A
+  sources:
+  - developmentdomain/mqttusermanual/topics/r_at_mqttdisc.dita
+- cmd: +MQTTURC
+  syntax: +MQTTURC
+  category: mqtt
+  kind: urc
+  risk: none
+  title: MQTT URC信息上报
+  doc: 'MQTT URC信息上报集合。
+
+
+    参数：
+
+    命令标识（第一个参数）
+
+
+    - `"conn"`: MQTT连接状态发生变化事件上报。
+
+    - `"pubnmi"`: 新数据包上报（New Message Indication），提示从缓存区读取数据包。
+
+    - `"drop"`: 提示接收缓存区满，丢掉数据。
+
+    - `"publish"`: 接收到的MQTT Publish数据。
+
+    - `"pingresp"`: 配置心跳回显时，上报心跳包响应结果。
+
+    - `"timeout"`: 数据发送超时事件上报（仅上报订阅、取消订阅、发布最终超时结果，重传包超时不上报）。
+
+    - `"suback"`: 收到服务器订阅ACK信息上报。
+
+    - `"unsuback"`: 收到服务器取消订阅ACK信息上报。
+
+    - `"puback"`: QoS1模式下的发布响应ACK信息上报。
+
+    - `"pubrec"`: QoS2模式下的发布响应Receive上报。
+
+    - `"pubcomp"`: QoS2模式下的发布响应Complete上报。
+
+
+    `<connect_id>`整型，MQTT客户端标识。范围：0~5。（注：MN316A/MN326A/MN319/MN319-A范围：0~2。）
+
+
+    `<mid>`整型，数据包标识。范围：0~65535。
+
+
+    `<conn_state>`整型，当前连接状态。
+
+
+    - `0`: MQTT连接成功
+
+    - `1`: 正在重连
+
+    - `2`: 断开：用户主动断开
+
+    - `3`: 断开：拒绝连接（协议版本、标识符、用户名或密码错误）
+
+    - `4`: 断开：服务器断开
+
+    - `5`: 断开：Ping包超时断开（若服务器未在1.5倍保活时间内接收到客户端的消息，则相当于客户端发送了 DISCONNECT消息，服务器会断开与客户端的连接，此时会上报该URC。）
+
+    - `6`: 断开：网络异常断开
+
+    - `255`: 断开：未知错误
+
+    - `7~254`: 保留
+
+
+    `<code>`整型，服务器反馈码。多条消息订阅时，按照订阅顺序返回对应的结果。
+
+
+    - `0`: 订阅成功QoS=0
+
+    - `1`: 订阅成功QoS=1
+
+    - `2`: 订阅成功QoS=2
+
+    - `128`: 订阅失败
+
+
+    `<data_len>`整型，接收数据长度。
+
+
+    `<dropped_length>`整型，丢弃的数据长度。
+
+
+    `<topic>`字符串，订阅的主题。
+
+
+    `<total_len>`整型，负载总长度。
+
+
+    `<payload_len>`整型，当前输出负载信息的长度。
+
+
+    `<payload>`字符串，当前输出的负载信息。
+
+
+    `<ping_ret>`整型，心跳上报结果。
+
+
+    - `0`: 心跳上报成功
+
+    - `1`: 心跳上报超时
+
+
+    `<dup>`整型，重发标志。
+
+
+    - `0`: 非重发数据
+
+    - `1`: 重发数据
+
+
+    > 注意：ML302A/ML305A/ML307A/ML307R/ML307B/ML307C/ML307X/ML307Y/ML307N：publish的URC中`topic+msg`总长度超过512字节会进行分包。'
+  examples: []
+  source: developmentdomain/mqttusermanual/topics/r_mqtt_urc.dita
+  models:
+  - ML302A
+  - ML302S
+  - ML305A
+  - ML305M
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307G
+  - ML307H
+  - ML307M
+  - ML307N
+  - ML307R
+  - ML307S
+  - ML307X
+  - ML307Y
+  - MN316
+  - MN316-S
+  - MN316A
+  - MN318
+  - MN319
+  - MN319-A
+  - MN326
+  - MN326A
+  - MN327
+  - MN328
+  - MR880A
+  sources:
+  - developmentdomain/mqttusermanual/topics/r_mqtt_urc.dita

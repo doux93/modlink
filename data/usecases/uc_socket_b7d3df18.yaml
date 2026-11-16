@@ -1,0 +1,55 @@
+schema: modulink/diagflow@1
+id: uc_socket_b7d3df18
+name: UDP/TCP数据接收 · TCP普通模式
+kind: usecase
+category: socket
+source: MN326 通信流程示例
+verified: false
+applies_to:
+- mn326
+steps:
+- id: s1
+  title: 建立TCP连接。
+  send:
+  - AT+ZOPEN=0,39.106.55.121,2017
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZOPEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZOPEN（final={final}）
+    abort: true
+- id: s2
+  title: 发送数据。
+  send:
+  - AT+ZSEND=1,6,"ascv12",5
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZSEND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZSEND（final={final}）
+    abort: true
+- id: s3
+  title: 关闭连接。
+  send:
+  - AT+ZCLOSE=1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZSTATE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZSTATE（final={final}）
+    abort: true

@@ -1,0 +1,41 @@
+schema: modulink/diagflow@1
+id: uc_socket_aa29d2b0
+name: IPv6数据业务 · IPv6 TCPIP业务
+kind: usecase
+category: socket
+source: MN326 通信流程示例
+verified: false
+applies_to:
+- mn326
+- mn328
+steps:
+- id: s1
+  title: 建立UDP连接，IPv6类型。
+  send:
+  - AT+ZOPEN=1,"2408:400a:16a:9700:d3af:3f8b:7c2b:8b84",9000
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZOPEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZOPEN（final={final}）
+    abort: true
+- id: s2
+  title: 建立TCP连接，IPv6类型。
+  send:
+  - AT+ZOPEN=0,"2408:400a:16a:9700:d3af:3f8b:7c2b:8b84",9000
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZOPEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZOPEN（final={final}）
+    abort: true

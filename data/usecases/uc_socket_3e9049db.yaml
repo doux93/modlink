@@ -1,0 +1,41 @@
+schema: modulink/diagflow@1
+id: uc_socket_3e9049db
+name: IPv6入网配置 · 确认IPV6入网
+kind: usecase
+category: socket
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+- mn316a
+steps:
+- id: s1
+  title: AT+CGCONTRDP
+  send:
+  - AT+CGCONTRDP
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGCONTRDP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGCONTRDP（final={final}）
+    abort: true
+- id: s2
+  title: AT+CGCONTRDP
+  send:
+  - AT+CGCONTRDP
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGCONTRDP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGCONTRDP（final={final}）
+    abort: true

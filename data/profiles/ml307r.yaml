@@ -1,0 +1,120 @@
+# 模组画像样板文件 —— FAE 新增模组支持只需仿照本文件写一个 YAML 放入本目录
+schema: modulink/profile@1
+id: ml307r
+name: "ML307R (LTE Cat1)"
+vendor: "中移物联"
+family: cat1
+model_codes: [ML307R]
+series: ML307
+capabilities: [cellular, lte-cat1, tcp-ip]
+support_level: verified
+
+# 型号自动识别：连接后发送 command，响应匹配 match 即选中本画像
+detect:
+  command: "AT+CGMM"
+  match: '(?:^|[^A-Z0-9-])ML307R(?:-[A-Z0-9]+)*(?:[^A-Z0-9-]|$)'
+  priority: 20
+
+ports:
+  - role: at
+    default_baud: 115200
+  - role: log
+    default_baud: 921600
+
+line_ending: "\r\n"
+
+# URC 识别规则：pattern 为正则(支持命名捕获)，severity 可固定或按字段取值映射
+urc_patterns:
+  - id: cereg_urc
+    pattern: '^\+CEREG: (?<stat>\d+)(,.*)?$'
+    label: "网络注册"
+    severity_field: stat
+    severity_map: { "0": error, "1": info, "2": warning, "3": error, "5": info }
+  - id: cpin_urc
+    pattern: '^\+CPIN: (?<state>.+)$'
+    label: "SIM 状态"
+    severity: info
+  - id: mip_disconn
+    pattern: '^\+MIPURC: "disconn",(?<id>\d+),(?<err>\d+)$'
+    label: "Socket 断开"
+    severity: warning
+  - id: mipopen_result
+    pattern: '^\+MIPOPEN: (?<id>\d+),(?<result>\d+)$'
+    label: "Socket 连接结果"
+    severity_field: result
+    severity_map: { "0": info }
+    severity_default: error
+  - id: csq_report
+    pattern: '^\+CSQ: (?<rssi>\d+),(?<ber>\d+)$'
+    label: "信号质量"
+    severity: info
+
+# AT 指令字典（补全提示 + 手册问答语料；doc 从官方 AT 手册摘录）
+at_commands:
+  - cmd: "AT+CSQ"
+    syntax: "AT+CSQ"
+    category: network
+    risk: none
+    doc: "查询信号质量。返回 +CSQ: <rssi>,<ber>。rssi: 0-31(值越大信号越好，99=无信号)，换算 dBm = rssi*2-113。"
+  - cmd: "AT+CPIN"
+    syntax: "AT+CPIN?"
+    category: sim
+    risk: none
+    doc: "查询 SIM 卡状态。READY=就绪；SIM PIN=需要 PIN 码解锁。无卡时返回 +CME ERROR: 10。"
+  - cmd: "AT+CEREG"
+    syntax: "AT+CEREG=<n> / AT+CEREG?"
+    category: network
+    risk: none
+    doc: "EPS 网络注册状态。<stat>: 0=未注册未搜网 1=已注册(本地网) 2=搜网中 3=注册被拒绝 5=已注册(漫游)。<n>=1 开启状态变化 URC 上报。"
+  - cmd: "AT+CGDCONT"
+    syntax: 'AT+CGDCONT=<cid>,"IP","<APN>"'
+    category: pdp
+    risk: none
+    doc: "定义 PDP 上下文(APN)。中移物联卡常用 APN: cmiot / cmnet。APN 配置错误是 PDP 激活失败(+CME ERROR: 148)最常见原因。"
+  - cmd: "AT+CGACT"
+    syntax: "AT+CGACT=<state>,<cid>"
+    category: pdp
+    risk: none
+    doc: "激活/去激活 PDP 上下文。激活成功后可用 AT+CGPADDR 查询获取的 IP 地址。"
+  - cmd: "AT+MIPOPEN"
+    syntax: 'AT+MIPOPEN=<id>,"<TCP|UDP|SSL>","<addr>",<port>[,<local_port>,<mode>]'
+    category: tcpip
+    risk: none
+    doc: "建立 socket 连接。<id>: 0-5 socket 编号。异步返回 +MIPOPEN: <id>,<result>，result=0 成功。需先完成 PDP 激活。"
+  - cmd: "AT+MIPSEND"
+    syntax: "AT+MIPSEND=<id>,<len>[,<data>]"
+    category: tcpip
+    risk: none
+    doc: "发送数据。返回 +MIPSEND: <id>,<result>。"
+  - cmd: "AT+MIPCLOSE"
+    syntax: "AT+MIPCLOSE=<id>"
+    category: tcpip
+    risk: none
+    doc: "关闭 socket。"
+  - cmd: "AT+CFUN"
+    syntax: "AT+CFUN=<fun>[,<rst>]"
+    category: system
+    risk: reboot
+    doc: "设置功能模式。0=最小功能 1=全功能 4=飞行模式。AT+CFUN=1,1 会重启模组——高危操作。"
+  - cmd: "AT+IPR"
+    syntax: "AT+IPR=<rate>"
+    category: system
+    risk: config
+    doc: "设置串口波特率。修改后当前连接会失效，需按新波特率重连——注意保存配置的时机。"
+
+# 适用的诊断流程（M3 使用）
+diagnostics: [network_attach]
+
+# 错误码表引用（叠加顺序：后者覆盖前者同码）
+error_code_tables: [cme_standard, cms_standard]
+
+# 离线自然语言意图（AI 断网降级时的规则匹配）
+intents:
+  - phrases: ["查信号", "信号强度", "信号怎么样"]
+    sequence: ["AT+CSQ"]
+  - phrases: ["查卡", "SIM卡状态", "卡在不在"]
+    sequence: ["AT+CPIN?", "AT+ICCID"]
+  - phrases: ["注册状态", "入网了吗", "网络注册"]
+    sequence: ["AT+CEREG?", "AT+COPS?"]
+  - phrases: ["查版本", "固件版本"]
+    sequence: ["ATI", "AT+CGMR"]

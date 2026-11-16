@@ -1,0 +1,37 @@
+schema: modulink/diagflow@1
+id: uc_power_45a27d09
+name: 省电流程 · 标准深睡流程
+kind: usecase
+category: power
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+steps:
+- id: s1
+  title: 配置PSM
+  send:
+  - AT+CPSMS=1,,,"00101111","00100010"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 释放锁，模组将进入深睡。
+  send:
+  - AT+WORKLOCK=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+POWERDOWN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +POWERDOWN（final={final}）
+    abort: true

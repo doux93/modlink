@@ -1,0 +1,34 @@
+schema: modulink/diagflow@1
+id: uc_network_794b6d52
+name: 自动拨号配置
+kind: usecase
+category: network
+source: ML551Z 通信流程示例
+verified: false
+applies_to:
+- ml551z
+steps:
+- id: s1
+  title: 配置为自动拨号（上位机网卡拨号）
+  send:
+  - AT+MDIALUPCFG="auto",1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 取消自动拨号（上位机网卡拨号）
+  send:
+  - AT+MDIALUPCFG="auto",0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

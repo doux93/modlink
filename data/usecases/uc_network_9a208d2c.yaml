@@ -1,0 +1,61 @@
+schema: modulink/diagflow@1
+id: uc_network_9a208d2c
+name: 锁定BAND
+kind: usecase
+category: network
+source: MN316A 通信流程示例
+verified: false
+applies_to:
+- mn316a
+steps:
+- id: s1
+  title: 关闭协议栈
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 锁定UE到B8
+  send:
+  - AT+NBAND=8
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 重启
+  send:
+  - AT+NRB
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 当前配置为B8
+  send:
+  - AT+NBAND?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+NBAND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +NBAND（final={final}）
+    abort: true

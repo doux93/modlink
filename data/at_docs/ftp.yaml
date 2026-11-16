@@ -1,0 +1,819 @@
+schema: modulink/at_docs@1
+protocol: FTP
+applies_to:
+- ML302A
+- ML305A
+- ML305U
+- ML307A
+- ML307B
+- ML307C
+- ML307N
+- ML307R
+- ML307X
+- MR880A
+source: anythingllm_kb/at_commands (DITA 手册自动提取)
+commands:
+- cmd: AT+MFTPCFG
+  syntax: AT+MFTPCFG=<connect_id>[,"data_type"[,<data_trans_type>]]
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPCFG 配置FTP参数
+  doc: '本命令用于配置FTP相关操作的参数配置。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<data_trans_type>`整型，FTP数据传输类型，范围：0~1，默认值0。
+
+
+    - `0`: Binary
+
+    - `1`: ASCII
+
+
+    `<trans_mode>`整型，FTP传输模式。范围：0~1，默认值1。（注：ML302A/ML305A/ML307A/ML305U/ML307R/ML307B/MR880A/ML307N/ML307X/ML307C：只支持被动模式。）
+
+
+    - `0`: 主动模式
+
+    - `1`: 被动模式
+
+
+    `<timeout>`整型，FTP命令超时响应时间。范围：2~30；单位：s。默认值10。
+
+
+    `<ssl_mode>`整型，FTP客户端SSL模式。范围：0~2，默认值0。（注：ML302A/ML305A/ML307A/ML305U/ML307R/ML307B/MR880A/ML307N/ML307X/ML307C：只支持通用FTP。）
+
+
+    - `0`: 通用FTP
+
+    - `1`: 隐式FTPS
+
+    - `2`: 显式FTPS
+
+
+    `<ssl_id>`整型，默认值0。
+
+
+    - `0~5`: SSL索引ID
+
+
+    `<fs_trans_type>`整型，FTP文件传输方式。范围：0~1，默认值0。
+
+
+    - `0`: 通过串口输入输出方式传输
+
+    - `1`: 通过本地文件系统方式传输
+
+
+    `<pdp_cid>`整型，FTP的PDP索引id。范围：1~15，默认值1。（注：ML305U范围：1~7。
+
+
+    ML307X：默认不指定`<pdp_cid>`，指定时需保证`<pdp_cid>`已激活。
+
+
+    ML307B：默认不指定`<pdp_cid>`，指定时需保证`<pdp_cid>`已激活，范围：0~4。
+
+
+    MR880A/ML307N：不支持cid配置。）'
+  examples:
+  - 'AT+MFTPCFG=0,"ssl",0,0
+
+    OK'
+  - 'AT+MFTPCFG=0,"data_type",1
+
+    OK'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftpcfg.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftpcfg.dita
+- cmd: AT+MFTPCONN
+  syntax: AT+MFTPCONN=<connect_id>,<ip/hostname>[,<username>[,<password>[,<port>]]]
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPCONN 建立FTP连接
+  doc: '本命令通过配置连接通道ID，远端服务器ip地址，远端服务器端口号，用户名与密码来建立FTP连接。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<ip/hostname>`字符串，目标IP或者主机名，最大长度255字节。
+
+
+    `<username>`字符串，登录用户名，最大长度255字节。
+
+
+    `<password>`字符串，登录密码或鉴权信息，最大长度255字节。
+
+
+    `<port>`整型，默认值21。
+
+
+    - `0~65535`: 目标端口号
+
+
+    `<result_code>`整型，结果码。
+
+
+    - `0`: 连接成功
+
+    - `其他`: 连接失败'
+  examples:
+  - 'AT+MFTPCONN=0,"2001:608:c00:180::1:ea"
+
+    OK
+
+    +MFTPCONN: 0,0'
+  - 'AT+MFTPCONN=1,"115.29.109.79","uftp","12341",21
+
+    OK
+
+    +MFTPCONN: 1,0'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftpconn.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftpconn.dita
+- cmd: AT+MFTPDISC
+  syntax: AT+MFTPDISC=<connect_id>
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPDISC 断开FTP连接
+  doc: '本命令通过设置连接通道ID，断开已连接的指定连接通道的FTP连接。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<result_code>`整型， 结果码。
+
+
+    - `0`: 断开连接成功
+
+    - `其他`: 断开连接失败'
+  examples:
+  - 'AT+MFTPDISC=?
+
+    +MFTPDISC: (0-5)
+
+    OK'
+  - 'AT+MFTPDISC=0
+
+    OK
+
+    +MFTPDISC: 0,0
+
+    +MFTPURC: 0,"conn",0'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftpdisc.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftpdisc.dita
+- cmd: AT+MFTPCWD
+  syntax: AT+MFTPCWD=<connect_id>,<path>
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPCWD 切换当前工作路径
+  doc: '本命令用于切换指定连接通道ID的当前工作路径。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<path>`字符串，文件路径，根目录为"/"，最大长度255字节。
+
+
+    `<result_code>`整型，结果码。
+
+
+    - `0`: 操作成功
+
+    - `其他`: 操作失败'
+  examples:
+  - 'AT+MFTPCWD=0,"/home/uftp/test"
+
+    OK
+
+    +MFTPCWD: 0,0'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftpcwd.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftpcwd.dita
+- cmd: AT+MFTPPWD
+  syntax: AT+MFTPPWD=<connect_id>
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPPWD 获取当前工作路径
+  doc: '本命令用于获取指定连接通道ID的当前工作路径。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<result_code>`整型， 结果码。
+
+
+    - `0`: 操作成功
+
+    - `其他`: 操作失败
+
+
+    `<path>`字符串，文件路径，根目录为"/"，最大长度255字节。'
+  examples:
+  - 'AT+MFTPPWD=0
+
+    OK
+
+    +MFTPPWD: 0,0,"/home/uftp/test"'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftppwd.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftppwd.dita
+- cmd: AT+MFTPMKD
+  syntax: AT+MFTPMKD=<connect_id>,<dir_name>
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPMKD 新建目录
+  doc: '本命令用于在指定连接通道ID的当前工作路径下创建目录。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<dir_name>`字符串，目录名称，最大长度255字节。
+
+
+    `<result_code>`整型，结果码。
+
+
+    - `0`: 操作成功
+
+    - `其他`: 操作失败'
+  examples:
+  - 'AT+MFTPMKD=0,"/home/uftp/test/new"
+
+    OK
+
+    +MFTPMKD: 0,0'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftpmkd.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftpmkd.dita
+- cmd: AT+MFTPLIST
+  syntax: AT+MFTPLIST=<connect_id>,<dir_name/file_name>
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPLIST 列出指定目录或文件信息
+  doc: '本命令用于列举指定目录下的文件信息。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<dir_name/file_name>`字符串，目录名称或文件名称，最大长度255字节。
+
+
+    `<result_code>`整型，结果码。
+
+
+    - `0`: 操作成功
+
+    - `其他`: 操作失败
+
+
+    `<permission>`字符串，获取到的文件或文件夹权限信息。
+
+
+    `<file_size>`整型，获取的文件大小信息。
+
+
+    `<modify_time>`字符串，获取的文件修改时间，格式为"YYYYMMDDHHMMSS"。'
+  examples:
+  - 'AT+MFTPLIST=0,"/home/uftp/test"
+
+    OK
+
+    +MFTPLIST: 0,0,"old","rwx"
+
+    +MFTPLIST: 0,0,"old.txt",9,20220818074000,"rw-"'
+  - 'AT+MFTPLIST=0,"old.txt"
+
+    OK
+
+    +MFTPLIST: 0,0,"old.txt",9,20220818074000,"rw-"'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftplist.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftplist.dita
+- cmd: AT+MFTPDEL
+  syntax: AT+MFTPDEL=<connect_id>,<dir_name/file_name>
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPDEL 删除指定目录或文件
+  doc: '本命令用于删除指定连接通道ID当前工作目录下的目录或文件。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<dir_name/file_name>`字符串，目录名称或文件名称，最大长度255字节。
+
+
+    `<result_code>`整型，结果码。
+
+
+    - `0`: 操作成功
+
+    - `其他`: 操作失败'
+  examples:
+  - 'AT+MFTPDEL=0,"new.txt"
+
+    OK
+
+    +MFTPDEL: 0,0
+
+    AT+MFTPDEL=0,"new"
+
+    OK
+
+    +MFTPDEL: 0,0'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftpdel.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftpdel.dita
+- cmd: AT+MFTPRN
+  syntax: AT+MFTPRN=<connect_id>,<old_name>,<new_name>
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPRN 对目录或文件重命名
+  doc: '本命令用于对目录或者文件进行重命名操作。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<old_name>`字符串，原始目录名称或原始文件名称，最大长度255字节。
+
+
+    `<new_name>`字符串，目标目录名称或目标文件名称，最大长度255字节。
+
+
+    `<result_code>`整型，结果码。
+
+
+    - `0`: 操作成功
+
+    - `其他`: 操作失败'
+  examples:
+  - 'AT+MFTPRN=0,"a.txt","d.txt"
+
+    OK
+
+    +MFTPRN: 0,0'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftprn.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftprn.dita
+- cmd: AT+MFTPRETR
+  syntax: AT+MFTPRETR=<connect_id>,<file_name>[,<local_file_name>[,<offset>[,<length>]]]
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPRETR 从服务器获取文件
+  doc: '本命令用于从FTP服务器获取文件操作。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<file_name>`字符串，需要获取的文件名称，最大长度255字节。
+
+
+    `<local_file_name>`字符串，最大长度255字节。（注：ML307B：最大长度64字节。）
+
+
+    - `+MFTPCFG命令中"local_fs"为0`: 本参数域段无效
+
+    - `+MFTPCFG命令中"local_fs"为1`: 本参数域段表示为保存在模组本地的文件名称，必须存在。
+
+
+    `<offset>`整型，需要获取的文件起始偏移位置，最大长度建议不超过文件的大小，默认值0。
+
+
+    `<length>`整型，从起始偏移开始，需获取文件的内容长度。与`<offset>`之和建议不超过文件大小，默认值为从`<offset>`位置开始文件剩余内容大小。（注：ML307C：默认值为
+    0，表示从`<offset>`位置开始获取文件剩余全部内容。）
+
+
+    `<result_code>`整型， 结果码。
+
+
+    - `0`: 操作成功
+
+    - `其他`: 操作失败
+
+
+    `<sum_size>`整型，已下载文件数据的累计长度。
+
+
+    `<recv_size>`整型，当前获取的文件数据的长度。
+
+
+    `<data>`字符串，当前获取的文件数据内容。'
+  examples:
+  - 'AT+MFTPRETR=0,"test1.txt"
+
+    OK
+
+    +MFTPRETR: 0,0,23,23,BBBBBbbbbb+MFTPAPP TEST
+
+    AT+MFTPRETR=0,"test1.txt",,5
+
+    OK
+
+    +MFTPRETR: 0,0,18,18,bbbbb+MFTPAPP TEST
+
+    AT+MFTPRETR=0,"test1.txt",,5,5
+
+    OK
+
+    +MFTPRETR: 0,0,5,5,bbbbb'
+  - 'AT+MFTPRETR=0,"test1.txt","/usr/1.txt"
+
+    OK
+
+    +MFTPRETR: 0,0,23,23'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftpretr.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftpretr.dita
+- cmd: AT+MFTPAPPE
+  syntax: AT+MFTPAPPE=<connect_id>,<file_name>[,<eof>[,<length>[,<data>]]]
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPAPPE 向服务器上传文件
+  doc: '本命令用于向FTP服务器上传文件操作。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<eof>`整型，范围：0~1。
+
+
+    - `0`: 表示当前发送数据包不是最后一包，后续还有数据包输入。
+
+    - `1`: 表示当前发送数据包为最后一包。
+
+
+    `<length>`整型，范围：1~4096。
+
+
+    - `<eof>存在<length>、<data>缺省`: 后续回显’>’，提示用户输入data内容，以ctrl+z结束。
+
+    - `1~4096`: 后续回显’>’，提示用户输入data内容，当数据长度达到length值时表示内容结束。
+
+
+    `<file_name>`字符串，上传到服务器的文件命名，最大长度255字节。
+
+
+    `<data>`字符串，FTP服务器中指定文件写入的数据内容，单位：字节。（注：数据模式输入`<data>`时`<data>`长度范围为1~4096；普通模式输入`<data>`时`<data>`长度范围为1~1024。）
+
+
+    `<result_code>`整型，结果码。
+
+
+    - `0`: 操作成功
+
+    - `其他`: 操作失败
+
+
+    `<sent_length>`整型， 上传的文件长度上报。
+
+
+    `<local_file_name>`字符串，最大长度255字节。（注：ML307B：最大长度64字节。）
+
+
+    - `+MFTPCFG指令中"local_fs"为0`: 本参数域段无效
+
+    - `+MFTPCFG指令中"local_fs"为1`: 模组本地的文件名称'
+  examples:
+  - 'AT+MFTPAPPE=0,"test1.txt",1,5
+
+    >BBBBB
+
+    OK
+
+    +MFTPAPPE: 0,0,5'
+  - 'AT+MFTPAPPE=0,"test1.txt",1
+
+    >bbbbb(ctrl+z)
+
+    OK
+
+    +MFTPAPPE: 0,0,5'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftpappe.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftpappe.dita
+- cmd: AT+MFTPSTOR
+  syntax: AT+MFTPSTOR=<connect_id>,<file_name>[,<eof>[,<length>[,<data>]]]
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPSTOR 向服务器覆盖写入文件
+  doc: '本命令用于向FTP服务器新建或覆盖方式写入文件操作。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<file_name>`字符串，上传到服务器的文件命名，最大长度255字节。
+
+
+    `<local_file_name>`字符串，最大长度255字节。（注：ML307B：最大长度64字节。）
+
+
+    - `+MFTPCFG命令中"local_fs"为0`: 本参数域段无效
+
+    - `+MFTPCFG命令中"local_fs"为1`: 模组本地的文件名称
+
+
+    `<eof>`整型，范围：0~1。
+
+
+    - `0`: 表示当前发送数据包不是最后一包，后续还有数据包输入。
+
+    - `1`: 表示当前发送数据包为最后一包。
+
+
+    `<length>`整型，范围：1~4096。
+
+
+    - `<eof>存在<length>、<data>缺省`: 后续回显’>’，提示用户输入data内容，以ctrl+z结束。
+
+    - `1~4096`: 后续回显’>’，提示用户输入data内容，当数据长度达到`<length>`值时表示内容结束。
+
+
+    `<data>`字符串，FTP服务器中指定文件写入的数据内容，单位：字节。（注：数据模式输入`<data>`时`<data>`长度范围为1~4096；普通模式输入`<data>`时`<data>`长度范围为1~1024。）
+
+
+    `<result_code>`整型， 结果码。
+
+
+    - `0`: 操作成功
+
+    - `其他`: 操作失败
+
+
+    `<sent_length>`整型，上传的文件长度。'
+  examples:
+  - 'AT+MFTPSTOR=0,"test1.txt",1,5
+
+    >BBBBB
+
+    OK
+
+    +MFTPSTOR: 0,0,5'
+  - 'AT+MFTPSTOR=0,"test1.txt",1
+
+    >bbbbb(ctrl+z)
+
+    OK
+
+    +MFTPSTOR: 0,0,5'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftpstor.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftpstor.dita
+- cmd: AT+MFTPSTATE
+  syntax: AT+MFTPSTATE=<connect_id>
+  category: ftp
+  kind: command
+  risk: none
+  title: AT+MFTPSTATE 查询FTP状态
+  doc: '本命令用于查询当前FTP连接状态。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<state>`整型，范围：0~3。
+
+
+    - `0`: FTP连接处于未建立状态
+
+    - `1`: FTP连接处于已建立状态
+
+    - `2`: 正在进行FTP文件下载
+
+    - `3`: 正在进行FTP文件上传'
+  examples:
+  - 'AT+MFTPSTATE=0
+
+    +MFTPSTATE: 0,1
+
+    OK'
+  source: developmentdomain/ftpusermanual/topics/r_at_mftpstate.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_at_mftpstate.dita
+- cmd: +MFTPURC
+  syntax: +MFTPURC
+  category: ftp
+  kind: urc
+  risk: none
+  title: +MFTPURC URC信息上报
+  doc: '该命令为FTP相关URC上报提示，包含连接状态变化事件。
+
+
+    参数：
+
+    `<connect_id>`整型，FTP连接通道ID，范围：0~5。
+
+
+    `<state_code>`整型，状态连接码。
+
+
+    - `0`: FTP已断开'
+  examples:
+  - '+MFTPURC: 1,"conn",0'
+  source: developmentdomain/ftpusermanual/topics/r_mftpurc.dita
+  models:
+  - ML302A
+  - ML305A
+  - ML305U
+  - ML307A
+  - ML307B
+  - ML307C
+  - ML307N
+  - ML307R
+  - ML307X
+  - MR880A
+  sources:
+  - developmentdomain/ftpusermanual/topics/r_mftpurc.dita

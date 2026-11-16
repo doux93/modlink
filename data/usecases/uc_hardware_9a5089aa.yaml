@@ -1,0 +1,53 @@
+schema: modulink/diagflow@1
+id: uc_hardware_9a5089aa
+name: GPIO
+kind: usecase
+category: hardware
+source: ML305M 通信流程示例
+verified: false
+applies_to:
+- ml305m
+- ml307m
+steps:
+- id: s1
+  title: 查询GPIO1配置
+  send:
+  - AT+MGPIO=1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MGPIO\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MGPIO（final={final}）
+    abort: true
+- id: s2
+  title: 设置GPIO1输出高电平
+  send:
+  - AT+MGPIO=1,2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 读取GPIO1的电平值
+  send:
+  - AT+MGPIO=1,0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MGPIO\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MGPIO（final={final}）
+    abort: true

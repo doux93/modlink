@@ -1,0 +1,33 @@
+schema: modulink/diagflow@1
+id: uc_http_574f03bc
+name: HTTP示例 · 请求过程中终止请求
+kind: usecase
+category: http
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: AT+MHTTPREQUEST=0,1,0,"/get"
+  send:
+  - AT+MHTTPREQUEST=0,1,0,"/get"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+MHTTPTERM=0
+  send:
+  - AT+MHTTPTERM=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

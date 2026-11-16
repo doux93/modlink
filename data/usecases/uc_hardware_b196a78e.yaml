@@ -1,0 +1,51 @@
+schema: modulink/diagflow@1
+id: uc_hardware_b196a78e
+name: LED灯
+kind: usecase
+category: hardware
+source: MN319-A 通信流程示例
+verified: false
+applies_to:
+- m5311-e
+- ml302a
+- ml302s
+- ml305a
+- ml305m
+- ml305u
+- ml307b
+- ml307h
+- ml307n
+- ml307x
+- ml307y
+- mn316
+- mn316-s
+- mn316a
+- mn319-a
+- mn326
+- mn326a
+- mn327
+steps:
+- id: s1
+  title: 使能网络状态灯
+  send:
+  - AT+MLED=0,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 使能模组状态灯
+  send:
+  - AT+MLED=1,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

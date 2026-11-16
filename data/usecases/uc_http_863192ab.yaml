@@ -1,0 +1,66 @@
+schema: modulink/diagflow@1
+id: uc_http_863192ab
+name: POST数据
+kind: usecase
+category: http
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: "iot.10086.cn/\"\t//创建http实例。"
+  send:
+  - 'AT+HTTPCREATE="http:'
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+HTTPCREATE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +HTTPCREATE（final={final}）
+    abort: true
+- id: s2
+  title: 'iot.10086.cn\r\nX-Requested-With: XMLHttpRequest\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+    AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.79 Safari/537.36\r\nContent-Type: application/x-www-form-urlencoded;
+    charset=UTF-8\r\nReferer: http://iot.10086.cn/cooperation/index/cid/174\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language:
+    zh-CN,zh;q=0.9\r\n" //配置发送HTTP header信息。'
+  send:
+  - 'AT+HTTPHEADER=0,"Connection: keep-alive\r\nAccept: */*\r\nOrigin: http:'
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: AT+HTTPCONTENT=0,"num=1&type=1&info=%E5%8F%B3%E4%B
+  send:
+  - AT+HTTPCONTENT=0,"num=1&type=1&info=%E5%8F%B3%E4%BE%A7-%E8%81%94%E7%B3%BB%E6%88%91%E4%BB%AC"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 发送POST(method参数为1)请求包，URL资源绝对路径。
+  send:
+  - AT+HTTPSEND=0,1,"/Commom/buried_point"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+HTTPNMIH\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +HTTPNMIH（final={final}）
+    abort: true

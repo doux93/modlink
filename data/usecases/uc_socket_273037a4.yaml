@@ -1,0 +1,40 @@
+schema: modulink/diagflow@1
+id: uc_socket_273037a4
+name: IPv6数据业务 · IPv6 DNS业务
+kind: usecase
+category: socket
+source: M5310-E 通信流程示例
+verified: false
+applies_to:
+- m5310-e
+steps:
+- id: s1
+  title: 获取当前激活的PDP上下文数据
+  send:
+  - AT+CGCONTRDP
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGCONTRDP\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGCONTRDP（final={final}）
+    abort: true
+- id: s2
+  title: 使用网络下发的域名服务器进行IPV6地址解析（客户也可自行指定域名服务器地址）。
+  send:
+  - AT+CMDNS=”www.taobao.com”,”2409:8060:20EA:101::1,2409:8060:20EA:201::1”
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMDNS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMDNS（final={final}）
+    abort: true

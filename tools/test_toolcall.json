@@ -1,0 +1,25 @@
+{
+  "model": "Auto",
+  "messages": [
+    {"role": "system", "content": "You are an AT command debugging assistant. When the user reports an error code, you MUST call the lookup_error_code tool."},
+    {"role": "user", "content": "module returned +CME ERROR: 148, what does it mean?"}
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "lookup_error_code",
+        "description": "look up the meaning of a CME/CMS error code",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "code_type": {"type": "string", "enum": ["cme", "cms"]},
+            "code": {"type": "number"}
+          },
+          "required": ["code_type", "code"]
+        }
+      }
+    }
+  ],
+  "temperature": 0.2
+}

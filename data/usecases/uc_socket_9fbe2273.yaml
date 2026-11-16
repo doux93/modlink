@@ -1,0 +1,64 @@
+schema: modulink/diagflow@1
+id: uc_socket_9fbe2273
+name: IPv6入网配置
+kind: usecase
+category: socket
+source: ML307B 通信流程示例
+verified: false
+applies_to:
+- ml307b
+steps:
+- id: s1
+  title: 更改PDP类型为“IPV4V6”双栈模式
+  send:
+  - AT+CGDCONT=0,"IPV4V6",""
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+CGDCONT?
+  send:
+  - AT+CGDCONT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGDCONT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGDCONT（final={final}）
+    abort: true
+- id: s3
+  title: 更改PDP类型为“IPV6”单栈模式
+  send:
+  - AT+CGDCONT=0,"IPV6",""
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: AT+CGDCONT?
+  send:
+  - AT+CGDCONT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGDCONT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGDCONT（final={final}）
+    abort: true

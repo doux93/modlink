@@ -1,0 +1,38 @@
+schema: modulink/diagflow@1
+id: uc_network_837b0ce7
+name: 网络配置 · eDRX模式配置与查询
+kind: usecase
+category: network
+source: MN316 通信流程示例
+verified: false
+applies_to:
+- mn316
+- mn316a
+steps:
+- id: s1
+  title: 设置eDRX寻呼周期为40.96s，时间窗(PTW)为5.12s。
+  send:
+  - AT+CEDRXS=1,5,"0011","0001"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: AT+CEDRXS?
+  send:
+  - AT+CEDRXS?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CEDRXS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CEDRXS（final={final}）
+    abort: true

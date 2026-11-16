@@ -1,0 +1,246 @@
+schema: modulink/diagflow@1
+id: uc_socket_d890b839
+name: IPv6入网配置 · 修改默认PDP类型
+kind: usecase
+category: socket
+source: 通信流程示例
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 去附着
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 更改默认PDP类型为“IPV4V6”双栈模式
+  send:
+  - AT+MUECONFIG="defapn","IPV4V6",""
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: AT+MREBOOT
+  send:
+  - AT+MREBOOT
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: AT+MUECONFIG="defapn"
+  send:
+  - AT+MUECONFIG="defapn"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MUECONFIG\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MUECONFIG（final={final}）
+    abort: true
+- id: s5
+  title: 去附着
+  send:
+  - AT+CGATT=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: 更改PDP类型为“IPV4V6”双栈模式
+  send:
+  - AT+CGDCONT=0,"IPV4V6",""
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s7
+  title: AT+CGDCONT?
+  send:
+  - AT+CGDCONT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGDCONT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGDCONT（final={final}）
+    abort: true
+- id: s8
+  title: 更改PDP类型为“IPV6”单栈模式
+  send:
+  - AT+CGDCONT=0,"IPV6",""
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s9
+  title: AT+CGDCONT?
+  send:
+  - AT+CGDCONT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGDCONT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGDCONT（final={final}）
+    abort: true
+- id: s10
+  title: 关闭协议栈
+  send:
+  - AT+CFUN=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s11
+  title: 更改PDP类型为“IPV4V6”双栈模式
+  send:
+  - AT+CGDCONT=1,"IPV4V6",""
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s12
+  title: AT+CGDCONT?
+  send:
+  - AT+CGDCONT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGDCONT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGDCONT（final={final}）
+    abort: true
+- id: s13
+  title: 更改PDP类型为“IPV6”单栈模式
+  send:
+  - AT+CGDCONT=1,"IPV6",""
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s14
+  title: AT+CGDCONT?
+  send:
+  - AT+CGDCONT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGDCONT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGDCONT（final={final}）
+    abort: true
+- id: s15
+  title: 更改PDP类型为“IPV4V6”双栈模式
+  send:
+  - AT+CGDCONT=1,"IPV4V6",""
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s16
+  title: AT+CGDCONT?
+  send:
+  - AT+CGDCONT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGDCONT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGDCONT（final={final}）
+    abort: true
+- id: s17
+  title: 更改PDP类型为“IPV6”单栈模式
+  send:
+  - AT+CGDCONT=1,"IPV6",""
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s18
+  title: AT+CGDCONT?
+  send:
+  - AT+CGDCONT?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CGDCONT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CGDCONT（final={final}）
+    abort: true

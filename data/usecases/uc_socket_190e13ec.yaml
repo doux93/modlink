@@ -1,0 +1,55 @@
+schema: modulink/diagflow@1
+id: uc_socket_190e13ec
+name: UDP/TCP数据发送 · UDP数据发送
+kind: usecase
+category: socket
+source: MN328 通信流程示例
+verified: false
+applies_to:
+- mn328
+steps:
+- id: s1
+  title: 0#建立UDP连接。
+  send:
+  - AT+ZOPEN=1,"120.27.12.119",2016
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZOPEN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZOPEN（final={final}）
+    abort: true
+- id: s2
+  title: 0#发送数据11 Bytes，序列号为1。
+  send:
+  - AT+ZSEND=0,11,"12345678900",1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZSEND\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZSEND（final={final}）
+    abort: true
+- id: s3
+  title: 0#关闭连接。
+  send:
+  - AT+ZCLOSE=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+ZSTATE\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +ZSTATE（final={final}）
+    abort: true

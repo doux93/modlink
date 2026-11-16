@@ -1,0 +1,198 @@
+schema: modulink/diagflow@1
+id: uc_ftp_b1d32593
+name: FTP示例 · 获取/切换当前工作路径，新建目录，对目录或文件重命名/列出指定信息/删除
+kind: usecase
+category: ftp
+source: FTP用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 连接并登录FTP服务器
+  send:
+  - AT+MFTPCONN=0,"<FTP_SERVER_IP>","<FTP_USER>","<FTP_PASSWORD>",21
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPCONN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPCONN（final={final}）
+    abort: true
+- id: s2
+  title: 获取当前工作路径
+  send:
+  - AT+MFTPPWD=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 切换当前工作路径
+  send:
+  - AT+MFTPCWD=0,"/home/<FTP_USER>/test"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPCWD\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPCWD（final={final}）
+    abort: true
+- id: s4
+  title: 获取当前工作路径
+  send:
+  - AT+MFTPPWD=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 新建目录
+  send:
+  - AT+MFTPMKD=0,"test1"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPMKD\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPMKD（final={final}）
+    abort: true
+- id: s6
+  title: 上传文件
+  send:
+  - AT+MFTPSTOR=0,"1.txt",1,10,"1111111111"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPSTOR\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPSTOR（final={final}）
+    abort: true
+- id: s7
+  title: 对目录重命名
+  send:
+  - AT+MFTPRN=0,"test1","test2"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPRN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPRN（final={final}）
+    abort: true
+- id: s8
+  title: 对文件重命名
+  send:
+  - AT+MFTPRN=0,"1.txt","2.txt"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPRN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPRN（final={final}）
+    abort: true
+- id: s9
+  title: 列出指定文件信息
+  send:
+  - AT+MFTPLIST=0,"2.txt"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPLIST\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPLIST（final={final}）
+    abort: true
+- id: s10
+  title: 列出指定目录信息
+  send:
+  - AT+MFTPLIST=0,"/home/<FTP_USER>/test"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPLIST\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPLIST（final={final}）
+    abort: true
+- id: s11
+  title: 删除指定文件
+  send:
+  - AT+MFTPDEL=0,"2.txt"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPDEL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPDEL（final={final}）
+    abort: true
+- id: s12
+  title: 删除指定目录
+  send:
+  - AT+MFTPDEL=0,"test2"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPDEL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPDEL（final={final}）
+    abort: true
+- id: s13
+  title: 断开连接
+  send:
+  - AT+MFTPDISC=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MFTPDISC\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MFTPDISC（final={final}）
+    abort: true

@@ -1,0 +1,49 @@
+schema: modulink/diagflow@1
+id: uc_hardware_c6b8e925
+name: GPIO
+kind: usecase
+category: hardware
+source: M5310-E 通信流程示例
+verified: false
+applies_to:
+- m5310-e
+steps:
+- id: s1
+  title: 读取Pin 9当前电平
+  send:
+  - AT+GPIO=9
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+GPIO\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +GPIO（final={final}）
+    abort: true
+- id: s2
+  title: 设置Pin 9为输出状态
+  send:
+  - AT+GPIO=2,9,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 设置Pin 9输出高电平
+  send:
+  - AT+GPIO=6,9,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

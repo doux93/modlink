@@ -1,0 +1,156 @@
+schema: modulink/diagflow@1
+id: uc_sms_e2fa239a
+name: 文本短信收发
+kind: usecase
+category: sms
+source: 通信流程示例
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 配置文本模式
+  send:
+  - AT+CMGF=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 向号码13888888888发送短信
+  send:
+  - AT+CMGS="+8613888888888"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGS（final={final}）
+    abort: true
+- id: s3
+  title: 列举未读短信
+  send:
+  - AT+CMGL="REC UNREAD"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGL（final={final}）
+    abort: true
+- id: s4
+  title: 再次列举，无未读短信。
+  send:
+  - AT+CMGL="REC UNREAD"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 读取编号为31的短信
+  send:
+  - AT+CMGR=31
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: 配置文本模式
+  send:
+  - AT+CMGF=1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s7
+  title: 向号码13888888888发送短信
+  send:
+  - AT+CMGS="13888888888"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGS（final={final}）
+    abort: true
+- id: s8
+  title: 向10086发送短信
+  send:
+  - AT+CMGS="10086"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGS\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGS（final={final}）
+    abort: true
+- id: s9
+  title: 列举未读短信
+  send:
+  - AT+CMGL="REC UNREAD"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CMGL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CMGL（final={final}）
+    abort: true
+- id: s10
+  title: 再次列举，无未读短信。
+  send:
+  - AT+CMGL="REC UNREAD"
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s11
+  title: 读取编号为40的短信
+  send:
+  - AT+CMGR=40
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true

@@ -1,0 +1,70 @@
+schema: modulink/diagflow@1
+id: uc_socket_1237960b
+name: IPv6入网配置 · 确认IPv6入网
+kind: usecase
+category: socket
+source: ML307B 通信流程示例
+verified: false
+applies_to:
+- ml307b
+steps:
+- id: s1
+  title: AT+CFUN?
+  send:
+  - AT+CFUN?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CFUN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CFUN（final={final}）
+    abort: true
+- id: s2
+  title: 建立业务连接
+  send:
+  - AT+MIPCALL=0,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true
+- id: s3
+  title: AT+CFUN?
+  send:
+  - AT+CFUN?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CFUN\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CFUN（final={final}）
+    abort: true
+- id: s4
+  title: 建立业务连接
+  send:
+  - AT+MIPCALL=0,1
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPCALL\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPCALL（final={final}）
+    abort: true

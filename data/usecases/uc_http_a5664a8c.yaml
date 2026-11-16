@@ -1,0 +1,166 @@
+schema: modulink/diagflow@1
+id: uc_http_a5664a8c
+name: API-设备即时命令-读设备资源
+kind: usecase
+category: http
+source: HTTP/HTTPS用户手册
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: APIKey需替换实际值
+  send:
+  - 'AT+HTTPHEADER=0,"api-key: ChangeForYourOwnKey \r\nConnection: Close\r\n"'
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 控制平台下发READ命令
+  send:
+  - AT+HTTPSEND=0,0,"/nbiot?imei=865820030265172&obj_id=3200"
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MIPLREAD\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MIPLREAD（final={final}）
+    abort: true
+- id: s3
+  title: 模组回复READ
+  send:
+  - AT+MIPLREADRSP=0,21345,1,3200,0,5500,5,1,"0",2,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s4
+  title: 模组回复READ
+  send:
+  - AT+MIPLREADRSP=0,21345,1,3200,0,5501,3,3,"-12",1,2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s5
+  title: 模组回复READ并开始传输回复数据
+  send:
+  - AT+MIPLREADRSP=0,21345,1,3200,0,5750,1,4,"test",0,0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+HTTPNMIH\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +HTTPNMIH（final={final}）
+    abort: true
+- id: s6
+  title: HTTP连接断开
+  send:
+  - AT+MIPLCLOSE=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s7
+  title: 关闭OneNET连接
+  send:
+  - AT+MIPLDELETE=0
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s8
+  title: 'AT+HTTPCONTENT=0,"{"title": "865820030265172"\r,"d'
+  send:
+  - 'AT+HTTPCONTENT=0,"{"title": "865820030265172"\r,"desc": "865820030265172"\r,"protocol": "LWM2M"\r,"auth_info":
+    {"865820030265172": "460043783403288"},}"'
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s9
+  title: AT+HTTPCONTENT=0
+  send:
+  - AT+HTTPCONTENT=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+HTTPCONTENT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +HTTPCONTENT（final={final}）
+    abort: true
+- id: s10
+  title: 清空content输入
+  send:
+  - AT+HTTPCONTENT=0,""
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s11
+  title: 以16进制字符串输入content
+  send:
+  - AT+HTTPCONTENT=0,7B227469746C65223A2022383635383230303330323635313732222C2264657363223A2022383635383230303330323635313732222C2270726F746F636F6C223A20224C574D324D222C22617574685F696E666F223A207B22383635383230303330323635313732223A2022343630303433373833343033323838227D2C7D,1
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s12
+  title: AT+HTTPCONTENT=0
+  send:
+  - AT+HTTPCONTENT=0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+HTTPCONTENT\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +HTTPCONTENT（final={final}）
+    abort: true

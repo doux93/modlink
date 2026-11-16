@@ -1,0 +1,37 @@
+schema: modulink/diagflow@1
+id: uc_sms_adb0ce81
+name: 短信功能配置 · 设置中心号码
+kind: usecase
+category: sms
+source: M5310-E 通信流程示例
+verified: false
+applies_to:
+- m5310-e
+steps:
+- id: s1
+  title: 必须设置，打开短信接收上报，否则无法接收短信。
+  send:
+  - AT+CNMI=3,2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s2
+  title: 读取当前短信中心号码，用于发送短信时PDU编码。
+  send:
+  - AT+CSCA?
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+CSCA\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +CSCA（final={final}）
+    abort: true

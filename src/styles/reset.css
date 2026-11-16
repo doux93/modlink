@@ -1,0 +1,41 @@
+/* ModuLink Studio — Small CSS reset */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-base);
+  color: var(--text-primary);
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* 品牌色按钮上的 focus 环用反色，避免与背景同色看不清 */
+button:focus-visible,
+.welcome-cta:focus-visible,
+.empty-action:focus-visible {
+  outline-color: var(--text-inverted);
+  outline-offset: 3px;
+}
+
+button {
+  font-family: inherit;
+}

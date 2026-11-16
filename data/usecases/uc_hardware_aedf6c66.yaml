@@ -1,0 +1,93 @@
+schema: modulink/diagflow@1
+id: uc_hardware_aedf6c66
+name: GPIO
+kind: usecase
+category: hardware
+source: 通信流程示例
+verified: false
+applies_to: []
+steps:
+- id: s1
+  title: 查询Pin9当前GPIO配置
+  send:
+  - AT+MGPIO=9
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MGPIO\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MGPIO（final={final}）
+    abort: true
+- id: s2
+  title: 设置Pin9为输出高电平
+  send:
+  - AT+MGPIO=9,2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s3
+  title: 读取Pin9的电平值
+  send:
+  - AT+MGPIO=9,0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MGPIO\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MGPIO（final={final}）
+    abort: true
+- id: s4
+  title: 查询Pin35当前GPIO配置
+  send:
+  - AT+MGPIO=35
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MGPIO\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MGPIO（final={final}）
+    abort: true
+- id: s5
+  title: 设置Pin35为输出高电平
+  send:
+  - AT+MGPIO=35,2
+  timeout_ms: 8000
+  evaluate:
+  - when: final == 'OK'
+    result: pass
+  - default: true
+    result: fail
+    reason: 返回 {final}
+    abort: true
+- id: s6
+  title: 读取Pin9的电平值
+  send:
+  - AT+MGPIO=35,0
+  timeout_ms: 8000
+  expect_urc:
+    pattern: ^\+MGPIO\b
+    timeout_ms: 15000
+  evaluate:
+  - when: final == 'OK' && urc == 1
+    result: pass
+  - default: true
+    result: fail
+    reason: 未收到预期上报 +MGPIO（final={final}）
+    abort: true
