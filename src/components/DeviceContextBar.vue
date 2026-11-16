@@ -9,19 +9,20 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { useWorkspace } from "../composables/useWorkspace";
 import { useSerialStore } from "../stores/serial";
+import { deviceStatus } from "../utils/deviceStatus";
 import type { KnowledgeCapabilities, ManualContentLevel } from "../types";
 
 const store = useSerialStore();
 const message = useMessage();
 const { connectDevice } = useWorkspace();
 const busy = ref(false);
-const identifying = ref(false);
 const capabilities = ref<KnowledgeCapabilities | null>(null);
+const capabilitiesLoading = ref(false);
 const KNOWLEDGE_CAPABILITIES_CHANGED = "modulink:knowledge-capabilities-changed";
 let capabilityRequestVersion = 0;
 
 const activeSession = computed(() => store.activeSession);
-const profileLabel = computed(() => store.activeProfile?.id !== "generic" ? store.activeProfile?.name || "未识别" : "未识别");
+const status = computed(() => deviceStatus(activeSession.value, store.activeProfile));
 const portOptions = computed(() => store.sessions
   .filter((s) => !store.deviceGroups.some((g) => g.logPort === s.port))
   .map((s) => {
@@ -45,6 +46,8 @@ const modeType = computed(() => ({
 
 async function refreshCapabilities() {
   const requestVersion = ++capabilityRequestVersion;
+  capabilitiesLoading.value = true;
+  capabilities.value = null;
   try {
     const result = await invoke<KnowledgeCapabilities>("get_knowledge_capabilities", {
       profileId: store.activeProfileId || null,
@@ -52,6 +55,8 @@ async function refreshCapabilities() {
     if (requestVersion === capabilityRequestVersion) capabilities.value = result;
   } catch {
     if (requestVersion === capabilityRequestVersion) capabilities.value = null;
+  } finally {
+    if (requestVersion === capabilityRequestVersion) capabilitiesLoading.value = false;
   }
 }
 
@@ -81,16 +86,13 @@ async function disconnectActive() {
 
 async function identify() {
   const port = store.activePort;
-  if (!port || identifying.value) return;
-  identifying.value = true;
-  try {
-    const name = await store.detectProfile(port);
-    if (name) message.success(`已识别 ${name}`);
-    else message.warning("未能精确识别型号，可在设备详情中手动选择型号");
-    await refreshCapabilities();
-  } finally {
-    identifying.value = false;
-  }
+  const session = store.activeSession;
+  if (!session?.connected || status.value.identifying) return;
+  const name = await store.detectProfile(port);
+  if (!store.sessions.includes(session) || !session.connected) return;
+  if (name) message.success(`${port} · 已识别 ${name}`);
+  else if (session.identification === "unmatched" || session.identification === "failed")
+    message.warning(`${port} · ${session.identificationError || "未匹配到型号，可手动选择；通用调试仍可使用"}`);
 }
 
 onMounted(async () => {
@@ -100,6 +102,7 @@ onMounted(async () => {
   await refreshCapabilities();
 });
 onUnmounted(() => {
+  capabilityRequestVersion++;
   window.removeEventListener(KNOWLEDGE_CAPABILITIES_CHANGED, handleKnowledgeCapabilitiesChanged);
 });
 
@@ -111,21 +114,23 @@ watch(
 
 <template>
   <header class="device-context">
-    <span class="connection-state" :class="{ online: activeSession?.connected }"><i />{{ activeSession?.connected ? '已连接' : '未连接' }}</span>
+    <span class="connection-state" :class="{ online: status.connected }"><i />{{ status.connectionLabel }}</span>
     <span class="context-label">当前设备</span>
     <n-select v-if="portOptions.length" :value="store.activePort || null" class="port-select" size="small" aria-label="当前设备" :options="portOptions" :consistent-menu-width="false" @update:value="selectPort" />
     <span v-else class="no-device">连接后开始调试与诊断</span>
     <n-button size="small" :type="activeSession?.connected ? 'default' : 'primary'" @click="connectDevice">{{ activeSession?.connected ? '添加设备' : '连接设备' }}</n-button>
-    <span v-if="activeSession" class="model-label">{{ profileLabel }} · {{ activeSession.baud }}</span>
+    <span v-if="activeSession" class="model-label" :title="[status.modelLabel, status.detail, status.reason].filter(Boolean).join('；')" role="status">{{ status.modelLabel }} · {{ activeSession.baud }}</span>
     <details v-if="activeSession" class="device-details">
       <summary>设备详情</summary>
       <div class="detail-panel">
         <b>设备 {{ activeSession.port }}</b>
-        <p>型号未识别或有误时，可手动选择。</p>
+        <p class="device-availability">{{ status.detail }}</p>
+        <p v-if="status.reason" class="identification-reason">{{ status.reason }}</p>
+        <p>设备型号（可手动选择）</p>
         <n-select :value="store.activeProfileId" @update:value="store.setActiveProfile" :options="profileOptions" filterable aria-label="设备型号" placeholder="选择设备型号" />
         <p>固件：{{ activeSession.firmware || '尚未读取' }}</p>
-        <p>可用资料：<n-tag size="small" :type="modeType" :bordered="false">{{ capabilities ? modeText : '正在读取' }}</n-tag></p>
-        <div class="detail-actions"><n-button size="small" :disabled="!activeSession.connected" :loading="identifying" @click="identify">重新识别</n-button><n-button size="small" :loading="busy" @click="disconnectActive">断开设备</n-button></div>
+        <p>可用资料：<n-tag size="small" :type="capabilities ? modeType : 'default'" :bordered="false">{{ capabilitiesLoading ? '正在读取' : capabilities ? modeText : '读取失败' }}</n-tag> <n-button v-if="!capabilitiesLoading && !capabilities" size="tiny" quaternary @click="refreshCapabilities">重试</n-button></p>
+        <div class="detail-actions"><n-button size="small" :disabled="!activeSession.connected" :loading="status.identifying" @click="identify">重新识别</n-button><n-button size="small" :loading="busy" @click="disconnectActive">断开设备</n-button></div>
       </div>
     </details>
   </header>

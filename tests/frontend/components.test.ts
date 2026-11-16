@@ -118,6 +118,8 @@ it("renders all lazy pages and the history drawer without global UI registration
   }
   activeView.value = "console";
   await flushPromises();
+  await wrapper.findAll("button").find((button) => button.text() === "展开快捷指令")!.trigger("click");
+  await flushPromises();
   const createButton = wrapper.findAll("button").find((button) => button.text() === "或手动新建一条")!;
   await createButton.trigger("click");
   await flushPromises();

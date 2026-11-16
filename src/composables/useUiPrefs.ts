@@ -1,12 +1,16 @@
 import { ref, watch } from "vue";
+import { readUiPreference as safeGet, writeUiPreference as safeSet } from "../utils/uiStorage";
+import type { QuickPanelPreference } from "../utils/consoleLayout";
 
 /**
- * useUiPrefs — 持久化的 UI 偏好（localStorage 单 key 管理）
+ * useUiPrefs — 模块级共享 UI 偏好，保留已有 localStorage key。
  *
  * 持久化范围：
  *  - ml.theme   ("dark" | "light")
  *  - ml.lastView ("console" | "diag" | "ai" | "kb" | "stress" | "logs")
  *  - ml.fontSize (number)
+ *  - ml.sidebarCollapsed (0 | 1)
+ *  - ml.showQuickCommands (0 | 1；未设置时按内容和窗口自动布局)
  *
  * 不在持久化范围：
  *  - onboarding 完成状态（useOnboarding.ts 单 key，更独立）
@@ -15,21 +19,6 @@ import { ref, watch } from "vue";
  */
 export type ViewKey = "console" | "diag" | "ai" | "kb" | "stress" | "logs";
 const VALID_VIEWS: readonly ViewKey[] = ["console", "diag", "ai", "kb", "stress", "logs"];
-
-function safeGet(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function safeSet(key: string, value: string): void {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    /* ignore */
-  }
-}
 
 const isValidView = (v: string | null): v is ViewKey =>
   !!v && (VALID_VIEWS as readonly string[]).includes(v);
@@ -46,8 +35,10 @@ function readFontSize(): number {
   return Number.isFinite(n) && n >= 10 && n <= 24 ? n : 13;
 }
 const fontSize = ref<number>(readFontSize());
-const showQuickCommands = ref(safeGet("ml.showQuickCommands") !== "0");
-watch(showQuickCommands, (value) => safeSet("ml.showQuickCommands", value ? "1" : "0"));
+// Preserve explicit choices made by earlier versions; no stored choice means auto.
+const storedQuickPanel = safeGet("ml.showQuickCommands");
+const quickPanelPreference = ref<QuickPanelPreference>(storedQuickPanel === "1" ? "open" : storedQuickPanel === "0" ? "closed" : "auto");
+watch(quickPanelPreference, (value) => safeSet("ml.showQuickCommands", value === "auto" ? null : value === "open" ? "1" : "0"));
 const sidebarCollapsed = ref(safeGet("ml.sidebarCollapsed") === "1");
 watch(sidebarCollapsed, (value) => safeSet("ml.sidebarCollapsed", value ? "1" : "0"));
 
@@ -77,7 +68,7 @@ export function useUiPrefs() {
     activeView,
     fontSize,
     sidebarCollapsed,
-    showQuickCommands,
+    quickPanelPreference,
     applyInitialTheme,
   };
 }

@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 // Fixture-only UI check: no physical ports, AI calls, or native data writes.
 assert.equal(process.platform, 'win32');
@@ -47,8 +47,8 @@ await page.addInitScript(()=>{
   if(command==='get_knowledge')return knowledge;
   if(command==='list_serial_ports')return [{name:'COM3',description:'USB Serial Device'},{name:'COM7',description:'Second AT Port'},{name:'COM8',description:'Diagnostic Log Port'}];
   if(command==='open_serial_ports'||command==='list_executions')return [];
-  if(command==='load_quickcmds')return null;
-  if(command==='save_quickcmds')return;
+  if(command==='load_quickcmds')return JSON.parse(localStorage.getItem('fixture.quickCommands') || 'null');
+  if(command==='save_quickcmds'){localStorage.setItem('fixture.quickCommands',JSON.stringify(args.data));return;}
   if(command==='list_applicable_flows')return ['network_attach'];
   if(command==='get_knowledge_capabilities')return {coreAvailable:true,manualMode:'preview',effectiveManualMode:'preview',installedPacks:[],modelCoverage:[],fulltextModelCoverage:[],topicCount:0,degradationReason:'仅有摘要参考'};
   if(command==='get_settings')return {ai:{base_url:'',api_key_configured:false},kb:{manuals_dir:''}};
@@ -61,7 +61,18 @@ await page.addInitScript(()=>{
 });
 try{
  await page.goto(url);await page.locator('.console').waitFor();
+ await page.locator('.quick').waitFor({state:'hidden'});
  await screenshot('light-console.png');
+ // Restore saved commands with no explicit panel choice: wide screens open automatically.
+ await page.getByRole('button',{name:'展开快捷指令',exact:true}).click();
+ await page.getByRole('button',{name:'或手动新建一条',exact:true}).click();
+ await page.getByPlaceholder('AT 指令或数据',{exact:true}).fill('AT+CSQ');
+ await page.locator('.n-modal').getByRole('button',{name:'保存',exact:true}).click();
+ await page.waitForFunction(()=>localStorage.getItem('fixture.quickCommands')?.includes('AT+CSQ'));
+ await page.evaluate(()=>localStorage.removeItem('ml.showQuickCommands'));
+ await page.reload();
+ await page.locator('.quick-text').filter({hasText:'AT+CSQ'}).waitFor();
+
  await page.locator('.device-context').getByRole('button',{name:'连接设备',exact:true}).click();
  await page.locator('.connection-dialog').waitFor();
  await page.getByLabel('波特率', {exact:true}).fill('57600');
@@ -69,6 +80,12 @@ try{
  await page.getByRole('button',{name:'连接并识别',exact:true}).click();
  await page.locator('.connection-dialog').waitFor({state:'hidden'});
  assert((await page.locator('.device-context').innerText()).includes('57600'));
+ assert((await page.locator('.connection-state').innerText()).includes('串口已连接'));
+ await page.locator('.model-label').filter({hasText:'型号待识别'}).waitFor();
+ await page.locator('.device-details summary').click();
+ assert((await page.locator('.device-availability').innerText()).includes('通用基础诊断'));
+ await screenshot('light-device-status.png');
+ await page.locator('.device-details summary').click();
  await page.getByRole('link',{name:'设备诊断',exact:true}).click();await page.locator('.diag').waitFor();
  await screenshot('light-diagnosis-ready.png');
  await page.getByRole('button',{name:'开始检查',exact:true}).click();
@@ -98,11 +115,6 @@ try{
  assert(compact.headingHeight <= 44, 'Console heading must remain one compact row');
  assert(compact.terminalHeight >= 420, 'Compact window must prioritize log height');
  assert.equal(compact.redundantTabs,0, 'A single device must not repeat the device selector in a tab row');
- await page.getByRole('button',{name:'收起快捷指令',exact:true}).click();
- await page.locator('.quick').waitFor({state:'hidden'});
- assert((await page.locator('.io .terminal').boundingBox()).width >= compact.terminalWidth + 200);
- await screenshot('dark-console-expanded.png');
- await page.getByRole('button',{name:'展开快捷指令',exact:true}).click();
  // Exercise the real connection UI with a second fixture device and a paired log port.
  await page.locator('.device-context').getByRole('button',{name:'添加设备',exact:true}).click();
  await page.locator('.connection-dialog').waitFor();
@@ -115,15 +127,16 @@ try{
  await page.evaluate(() => {
   window.__emitFixtureEvent('serial://frames', [{seq:1,ts:Date.now(),port:'COM7',dir:'rx',kind:'response',text:'+CREG: 0,1; '+ 'registration_details_'.repeat(12)}, {seq:1,ts:Date.now(),port:'COM8',dir:'rx',kind:'raw',text:'[NETWORK] Registration accepted; data connection ready.'}]);
  });
+ await page.locator('.quick').waitFor({state:'hidden'});
  await screenshot('dark-console-dual-port.png');
  const dual = await page.evaluate(() => ({
   terminalWidth:document.querySelector('.io').getBoundingClientRect().width,
   logWidth:document.querySelector('.logpane').getBoundingClientRect().width,
-  quickWidth:document.querySelector('.quick').getBoundingClientRect().width,
+  quickHidden:getComputedStyle(document.querySelector('.quick')).display==='none',
   terminalOverflow:document.querySelector('.io .terminal').scrollWidth-document.querySelector('.io .terminal').clientWidth,
   logToolbarLabelHeight:Math.max(...[...document.querySelectorAll('.logpane-head b, .logpane-ops .n-checkbox__label')].map(el=>el.getBoundingClientRect().height)),
  }));
- assert(dual.terminalWidth >= 310 && dual.logWidth >= 200 && dual.quickWidth >= 200, 'Dual-port panels must leave readable width for each column');
+ assert(dual.terminalWidth >= 440 && dual.logWidth >= 260 && dual.quickHidden, 'Narrow dual-port workspaces prioritize AT and log columns');
  assert(dual.terminalOverflow <= 1, 'Log text must wrap inside narrow columns');
  assert(dual.logToolbarLabelHeight <= 24, 'Log toolbar labels must not break across lines in narrow columns');
  // Check actual composited text/button colors in the rendered dark theme.
@@ -140,9 +153,28 @@ try{
  assert(contrast.timestamp >= 4.5 && contrast.primaryButton >= 4.5, 'Dark text must stay readable against its actual background');
 
  assert(await page.evaluate(() => document.querySelector('.shell').scrollWidth <= window.innerWidth), 'Compact shell must not overflow horizontally');
+ await page.getByRole('button',{name:'展开快捷指令',exact:true}).click();
+ await page.locator('.quick-floating').waitFor();
+ assert(Math.abs((await page.locator('.io').boundingBox()).width-dual.terminalWidth)<1, 'Opening quick commands must not squeeze the main terminal');
+ await screenshot('dark-console-quick-floating.png');
+ await page.getByRole('button',{name:'关闭快捷指令面板',exact:true}).focus();
+ await page.keyboard.press('Escape');
+ await page.locator('.quick').waitFor({state:'hidden'});
+ assert(await page.getByRole('button',{name:'展开快捷指令',exact:true}).evaluate(el=>el===document.activeElement));
+ await page.getByRole('button',{name:'展开快捷指令',exact:true}).click();
+ await page.setViewportSize({width:1600,height:900});
+ await page.waitForFunction(()=>!document.querySelector('.quick').classList.contains('quick-floating'));
+ assert((await page.locator('.io').boundingBox()).width>=440);
+ await screenshot('dark-console-wide.png');
+ await page.getByRole('button',{name:'收起快捷指令',exact:true}).click();
+ await page.setViewportSize({width:1028,height:749});
+ await page.locator('.quick').waitFor({state:'hidden'});
+ assert(await page.evaluate(()=>localStorage.getItem('ml.showQuickCommands')==='0'), 'Resize must preserve an explicit closed preference');
+
  assert.deepEqual(errors,[]);
- await writeFile(path.join(output,'result.json'), JSON.stringify({passed:true, fixture:true, commit:process.env.GITHUB_SHA, checks:['connection with custom settings', 'diagnostic result', 'AI draft handoff without sending', 'compact layout', 'compact heading and log height', 'single-device tab removal', 'quick panel expands terminal', 'dual-port column sizes', 'dark text contrast'], screenshots:9, compact, dual, contrast},null,2));
- console.log('Visual preview flows passed: connected fixture, diagnosis, AI handoff, 9 screenshots; no hardware used.');
+ const screenshots=(await readdir(output)).filter(name=>name.endsWith('.png')).length;
+ await writeFile(path.join(output,'result.json'), JSON.stringify({passed:true, fixture:true, commit:process.env.GITHUB_SHA, checks:['connection with custom settings', 'diagnostic result', 'AI draft handoff without sending', 'compact layout', 'compact heading and log height', 'single-device tab removal', 'empty panel stays closed', 'saved commands open automatically', 'dual-port automatic collapse', 'floating panel preserves terminal width', 'panel Escape returns focus', 'wide inline layout', 'explicit closed preference survives resize', 'device state and available actions', 'dark text contrast'], screenshots, compact, dual, contrast},null,2));
+ console.log(`Visual preview flows passed: connected fixture, diagnosis, AI handoff, ${screenshots} screenshots; no hardware used.`);
 }catch(error){
  await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});
  await writeFile(path.join(output,'result.json'), JSON.stringify({passed:false, fixture:true, errors, error:String(error)},null,2));

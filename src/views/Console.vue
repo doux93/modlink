@@ -7,7 +7,7 @@ import {
   NTooltip,
   useMessage,
 } from "naive-ui";
-import { ref, computed, onMounted, onActivated, onDeactivated, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { X, Cable, FileText, AlertTriangle } from "@lucide/vue";
@@ -19,11 +19,12 @@ import TerminalLog from "../components/console/TerminalLog.vue";
 import { useSerialStore } from "../stores/serial";
 import { applicableAtCommands } from "../knowledge";
 import { useUiPrefs } from "../composables/useUiPrefs";
+import { useConsoleLayout } from "../composables/useConsoleLayout";
 
 const store = useSerialStore();
 const message = useMessage();
 const { connectDevice } = useWorkspace();
-const { activeView, showQuickCommands } = useUiPrefs();
+const { activeView } = useUiPrefs();
 const visibleSessionCount = computed(() => store.deviceGroups.length + store.standaloneSessions.length);
 
 onMounted(() => store.init());
@@ -65,60 +66,10 @@ async function saveLogPane() {
   message.success("日志口数据已保存");
 }
 
-// ---------------- 布局：可拖动分栏（宽度持久化） ----------------
-function readPanelWidth(key: string, fallback: number) {
-  try {
-    const value = Number(localStorage.getItem(key));
-    return Number.isFinite(value) && value >= 200 && value <= 720 ? value : fallback;
-  } catch { return fallback; }
-}
-const quickW = ref(readPanelWidth("ml.quickW", 280));
-const logW = ref(readPanelWidth("ml.logW", 340));
-const bodyEl = ref<HTMLElement>();
-const bodyWidth = ref(960);
-const availableWidth = computed(() => Math.max(0, bodyWidth.value - 16));
-const quickWidth = computed(() => Math.min(quickW.value, Math.max(200,
-  availableWidth.value - 320 - (store.activeDeviceGroup?.logPort ? 210 : 5))));
-const logWidth = computed(() => Math.min(logW.value, Math.max(200,
-  availableWidth.value - 320 - (showQuickCommands.value ? quickWidth.value + 10 : 5))));
-let observer: ResizeObserver | undefined;
-let finishDrag: (() => void) | undefined;
-function measureBody() {
-  const width = bodyEl.value?.getBoundingClientRect().width;
-  if (width) bodyWidth.value = width;
-}
-onMounted(() => {
-  measureBody();
-  observer = new ResizeObserver(measureBody);
-  if (bodyEl.value) observer.observe(bodyEl.value);
-});
-onActivated(measureBody);
-onDeactivated(() => finishDrag?.());
-onBeforeUnmount(() => { observer?.disconnect(); finishDrag?.(); });
-
-function startDrag(which: "quick" | "log", e: MouseEvent) {
-  e.preventDefault();
-  finishDrag?.();
-  const startX = e.clientX;
-  const start = which === "quick" ? quickWidth.value : logWidth.value;
-  const move = (ev: MouseEvent) => {
-    const v = Math.min(720, Math.max(200, start + (startX - ev.clientX)));
-    if (which === "quick") quickW.value = v;
-    else logW.value = v;
-  };
-  const up = () => {
-    window.removeEventListener("mousemove", move);
-    window.removeEventListener("mouseup", up);
-    finishDrag = undefined;
-    try {
-      localStorage.setItem("ml.quickW", String(quickW.value));
-      localStorage.setItem("ml.logW", String(logW.value));
-    } catch { /* Layout remains usable when storage is unavailable. */ }
-  };
-  finishDrag = up;
-  window.addEventListener("mousemove", move);
-  window.addEventListener("mouseup", up);
-}
+const { bodyEl, quickVisible, quickFloating, quickWidth, logWidth, toggleQuick, closeQuick, startDrag } = useConsoleLayout(
+  computed(() => !!store.activeDeviceGroup?.logPort),
+  computed(() => store.quickCmds?.groups.some((group) => group.items.length > 0) ?? false),
+);
 
 // ---------------- 输出区 ----------------
 const showTime = ref(true);
@@ -216,7 +167,7 @@ function onKey(e: KeyboardEvent) {
     <header class="workspace-heading">
       <h2>串口控制台</h2>
       <div class="heading-actions">
-        <n-button size="small" quaternary :aria-pressed="showQuickCommands" @click="showQuickCommands = !showQuickCommands">{{ showQuickCommands ? '收起快捷指令' : '展开快捷指令' }}</n-button>
+        <n-button size="small" quaternary :aria-expanded="quickVisible" aria-controls="console-quick-panel" @click="toggleQuick">{{ quickVisible ? '收起快捷指令' : '展开快捷指令' }}</n-button>
         <n-button size="small" secondary :disabled="!connected" @click="activeView = 'diag'">诊断当前设备</n-button>
       </div>
     </header>
@@ -364,8 +315,8 @@ function onKey(e: KeyboardEvent) {
       </section>
 
       <!-- 快捷指令面板（宽度可拖） -->
-      <div v-show="showQuickCommands" class="splitter" @mousedown="startDrag('quick', $event)" />
-      <QuickCommandPanel v-show="showQuickCommands" :style="{ width: quickWidth + 'px' }" />
+      <div v-show="quickVisible && !quickFloating" class="splitter" @mousedown="startDrag('quick', $event)" />
+      <QuickCommandPanel id="console-quick-panel" v-show="quickVisible" :floating="quickFloating" :style="{ width: quickWidth + 'px' }" @close="closeQuick" />
     </div>
 
 
@@ -406,7 +357,7 @@ function onKey(e: KeyboardEvent) {
 .tab-close { color: var(--text-tertiary); padding: 0 2px; display: inline-flex; }
 .tab-close:hover { opacity: 1; color: var(--status-danger); }
 
-.body { flex: 1; display: flex; min-height: 0; }
+.body { position: relative; flex: 1; display: flex; min-height: 0; }
 .io { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 10px 12px; gap: 8px; }
 
 .statusbar {

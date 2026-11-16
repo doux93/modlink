@@ -5,6 +5,7 @@ import { mount, flushPromises, type VueWrapper } from "@vue/test-utils";
 import { defineComponent } from "vue";
 import { NConfigProvider, NMessageProvider, NDialogProvider, NSelect } from "naive-ui";
 import Connection from "../../src/components/DeviceConnectionDialog.vue";
+import DeviceContextBar from "../../src/components/DeviceContextBar.vue";
 import Console from "../../src/views/Console.vue";
 import Diagnosis from "../../src/views/Diagnosis.vue";
 import Welcome from "../../src/components/onboarding/WelcomeOverlay.vue";
@@ -50,6 +51,7 @@ beforeEach(() => {
     throw new Error(`Unexpected IPC: ${command}`);
   });
   useWorkspace().connectionOpen.value = false; useWorkspace().historyOpen.value = false;
+  useUiPrefs().quickPanelPreference.value = "auto";
 });
 afterEach(() => {
   wrapper?.unmount(); wrapper = undefined;
@@ -166,4 +168,42 @@ it("does not send serial data when Enter confirms an IME candidate", async () =>
   await input.trigger("keydown", { key: "Enter" });
   await flushPromises();
   expect(write).toHaveBeenCalledOnce();
+});
+
+it("starts without an empty quick panel and preserves a user's closed choice when commands arrive", async () => {
+  const serial = setup(Console);
+  await flushPromises();
+  expect(wrapper!.find(".quick").isVisible()).toBe(false);
+  (await button("展开快捷指令")).click(); await flushPromises();
+  expect(wrapper!.find(".quick").isVisible()).toBe(true);
+  (await button("收起快捷指令")).click(); await flushPromises();
+  serial.quickCmds = { schema: "modulink/quickcmds@1", name: "saved", groups: [{ name: "default", items: [{ text: "AT", format: "text", selected: false, append_newline: true, note: "" }] }], loop: { times: 1, interval_ms: 300 }, warnings: [] };
+  await flushPromises();
+  expect(wrapper!.find(".quick").isVisible()).toBe(false);
+  (await button("展开快捷指令")).click(); await flushPromises();
+  expect(wrapper!.find(".quick-text").text()).toBe("AT");
+});
+
+it("separates serial connection from model identification and device-specific progress", async () => {
+  const serial = setup(DeviceContextBar, true);
+  await flushPromises();
+  expect(wrapper!.find(".connection-state").text()).toBe("串口已连接");
+  expect(wrapper!.find(".model-label").text()).toContain("型号待识别");
+  expect(wrapper!.find(".device-availability").text()).toContain("通用基础诊断");
+  serial.sessions[0].identification = "detecting"; await flushPromises();
+  expect(wrapper!.find(".model-label").text()).toContain("正在识别型号");
+  serial.activePort = "COM_B"; await flushPromises();
+  expect(wrapper!.find(".model-label").text()).toContain("型号待识别");
+  serial.sessions[1].connected = false; await flushPromises();
+  expect(wrapper!.find(".connection-state").text()).toBe("串口已断开");
+});
+
+it("shows failed knowledge loading and allows retry instead of an endless loading message", async () => {
+  setup(DeviceContextBar, true); await flushPromises();
+  expect(wrapper!.text()).toContain("读取失败");
+  expect(wrapper!.text()).not.toContain("正在读取");
+  mocks.invoke.mockResolvedValue({ effectiveManualMode: "preview" });
+  (await button("重试")).click(); await flushPromises();
+  expect(wrapper!.text()).toContain("摘要参考");
+  expect(wrapper!.text()).not.toContain("读取失败");
 });

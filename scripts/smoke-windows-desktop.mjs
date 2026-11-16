@@ -96,6 +96,9 @@ try {
   await page.keyboard.press("Escape");
   await page.locator(".n-drawer").waitFor({ state: "hidden" });
   await page.getByRole("link", { name: "串口控制台", exact: true }).click();
+  await page.locator(".quick").waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "展开快捷指令", exact: true }).click();
+  checks.push("empty quick panel starts collapsed");
   await page.getByRole("button", { name: "或手动新建一条", exact: true }).click();
   await page.getByPlaceholder("AT 指令或数据", { exact: true }).fill("AT+CSQ");
   await page.locator(".n-modal").getByRole("button", { name: "保存", exact: true }).click();

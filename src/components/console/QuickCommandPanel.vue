@@ -21,6 +21,8 @@ import { useExecutionStore } from "../../stores/execution";
 import { useQuickCommandRunner } from "../../composables/useQuickCommandRunner";
 import type { QuickCommand } from "../../types";
 
+defineProps<{ floating?: boolean }>();
+const emit = defineEmits<{ close: [] }>();
 const store = useSerialStore();
 const message = useMessage();
 const connected = computed(() => store.activeSession?.connected ?? false);
@@ -194,7 +196,7 @@ async function sendSelected(loop: boolean) {
 </script>
 
 <template>
-  <aside class="quick">
+  <aside class="quick" :class="{ 'quick-floating': floating }" aria-label="快捷指令" @keydown.esc.stop="emit('close')">
     <div class="quick-head">
       <b>快捷指令</b>
       <div>
@@ -202,8 +204,10 @@ async function sendSelected(loop: boolean) {
         <n-button size="tiny" quaternary :disabled="!store.quickCmds" @click="exportIni">
           导出
         </n-button>
+        <n-button v-if="floating" size="tiny" quaternary aria-label="关闭快捷指令面板" @click="emit('close')">关闭</n-button>
       </div>
     </div>
+    <p v-if="floating" class="floating-hint">临时展开，关闭后继续查看完整终端。</p>
     <template v-if="store.quickCmds">
       <div class="group-bar">
         <n-tabs v-model:value="activeGroup" type="line" size="small" class="tabs-flex">
@@ -345,6 +349,8 @@ async function sendSelected(loop: boolean) {
   min-width: 200px; flex-shrink: 0;
   display: flex; flex-direction: column; padding: 10px 10px 10px 4px;
 }
+.quick-floating { position: absolute; right: 8px; top: 4px; bottom: 8px; z-index: 10; padding: 12px; background: var(--surface-raised); border: 1px solid var(--border-default); border-radius: 10px; box-shadow: var(--shadow-lg); }
+.floating-hint { margin: 0 0 8px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
 .quick-head {
   display: flex; flex-wrap: wrap; gap: 4px; justify-content: space-between; align-items: center;
   padding: 2px 2px 8px; color: var(--text-primary);

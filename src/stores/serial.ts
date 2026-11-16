@@ -1,4 +1,6 @@
 import { isAtCommand } from "../utils/atCommand";
+import { probeProfile } from "../services/profileIdentification";
+import type { DeviceSession } from "../types/device";
 import { defineStore } from "pinia";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -21,15 +23,9 @@ let serialInitPromise: Promise<void> | null = null;
 
 const MAX_FRAMES_PER_PORT = 20000;
 
-export interface SessionInfo {
-  port: string;
-  baud: number;
-  generation: number;
-  connected: boolean;
-  profileId: string;
-  /** AT+CGMR 返回的固件身份，型号识别成功后按会话保存。 */
-  firmware: string;
-}
+export type SessionInfo = DeviceSession;
+// Requests belong to a session object. Reconnect/manual selection invalidates their result.
+const identificationRuns = new WeakMap<SessionInfo, Promise<string | null>>();
 
 /** 设备组：AT 口 + 可选日志口绑定为一个"设备"，分屏显示 */
 export interface DeviceGroup {
@@ -200,65 +196,46 @@ export const useSerialStore = defineStore("serial", {
     },
     /** 型号自动识别：按画像声明的探测指令尝试，结果归属当前会话。 */
     async detectProfile(port: string): Promise<string | null> {
-      try {
-        if (!this.knowledge) return null;
-        const target = this.executionTarget(port);
-        // 数值越大越先匹配；priority 表示规则具体程度，不表示画像可信度。
-        const profiles = this.knowledge.profiles
-          .filter((p) => p.detect?.command && p.detect.match)
-          .sort((a, b) => (b.detect?.priority ?? 0) - (a.detect?.priority ?? 0));
-        for (const command of [...new Set(profiles.map((p) => p.detect!.command))]) {
-          const r = await this.executeAt(target, command, "profile_detection", 2500);
-          if (r.final_code !== "OK") continue;
-          const text = r.lines.join("\n");
-          const matches: typeof profiles = [];
-          for (const p of profiles) {
-            if (p.detect!.command !== command) continue;
-            try {
-              if (new RegExp(p.detect!.match).test(text)) {
-                matches.push(p);
-              }
-            } catch {
-              this.lastError = `画像 ${p.id} 的识别正则无效`;
-            }
+      const session = this.sessions.find((item) => item.port === port && item.connected);
+      if (!session || !this.knowledge) return null;
+      const pending = identificationRuns.get(session);
+      if (pending) return pending;
+      const target = this.executionTarget(port);
+      session.identification = "detecting";
+      session.identificationError = "";
+      const isCurrent = () => this.sessions.includes(session) && session.connected
+        && session.generation === target.sessionGeneration
+        && identificationRuns.get(session) === task;
+      // Defer execution until the request has been registered for synchronous failures too.
+      const task: Promise<string | null> = Promise.resolve().then(async () => {
+        try {
+          const profile = await probeProfile(this.knowledge!.profiles,
+            (command) => this.executeAt(target, command, "profile_detection", 2500), isCurrent);
+          if (!isCurrent()) return null;
+          if (!profile) { session.identification = "unmatched"; return null; }
+          session.profileId = profile.id;
+          session.profileSource = "detected";
+          session.firmware = "";
+          const firmware = await this.executeAt(target, "AT+CGMR", "profile_detection", 2500, profile.id).catch(() => undefined);
+          if (!isCurrent()) return null;
+          if (firmware?.final_code === "OK") {
+            session.firmware = firmware.lines.map((line) => line.trim())
+              .filter((line) => line && line.toUpperCase() !== "OK" && line.toUpperCase() !== "AT+CGMR").join(" / ");
           }
-          if (!matches.length) continue;
-          const highestPriority = matches[0].detect!.priority;
-          const winners = matches.filter((profile) => profile.detect!.priority === highestPriority);
-          if (winners.length > 1) {
-            this.lastError = `型号识别存在歧义：${winners.map((profile) => profile.name).join("、")}`;
-            return null;
+          session.identification = "matched";
+          return profile.name;
+        } catch (error) {
+          if (isCurrent()) {
+            session.identification = "failed";
+            session.identificationError = error instanceof Error ? error.message : String(error);
           }
-          const session = this.sessions.find((s) => s.port === port && s.generation === target.sessionGeneration && s.connected);
-          if (!session) return null;
-          if (session) {
-            session.profileId = winners[0].id;
-            // 固件身份用于隔离同型号不同版本的实测能力记录；失败不影响型号识别。
-            const firmwareResult = await this.executeAt(
-              target,
-              "AT+CGMR",
-              "profile_detection",
-              2500,
-              winners[0].id
-            ).catch(() => undefined);
-            if (firmwareResult?.final_code === "OK") {
-              session.firmware = firmwareResult.lines
-                .map((line) => line.trim())
-                .filter(
-                  (line) =>
-                    line &&
-                    line.toUpperCase() !== "OK" &&
-                    line.toUpperCase() !== "AT+CGMR",
-                )
-                .join(" / ");
-            }
-          }
-          return winners[0].name;
+          return null;
+        } finally {
+          if (identificationRuns.get(session) === task) identificationRuns.delete(session);
         }
-      } catch {
-        /* 探测失败不影响使用，保持当前画像 */
-      }
-      return null;
+      });
+      identificationRuns.set(session, task);
+      return task;
     },
     /** 创建设备组：打开 AT 口（必选）+ 日志口（可选），绑定为一个页签 */
     async createDeviceGroup(name: string, atPort: string, atBaud: number, logPort: string, logBaud: number) {
@@ -373,8 +350,14 @@ export const useSerialStore = defineStore("serial", {
     },
     setActiveProfile(id: string) {
       const session = this.sessions.find((s) => s.port === this.activePort);
-      if (session) session.profileId = id;
-      else this.defaultProfileId = id;
+      if (session) {
+        identificationRuns.delete(session);
+        if (session.profileId !== id) session.firmware = "";
+        session.profileId = id;
+        session.profileSource = "manual";
+        session.identification = undefined;
+        session.identificationError = "";
+      } else this.defaultProfileId = id;
     },
     clear() {
       if (this.activePort) this.framesByPort[this.activePort] = [];
